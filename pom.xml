@@ -42,8 +42,8 @@
 
     <scm>
         <connection>scm:git:https://gitbox.apache.org/repos/asf/sling-org-apache-sling-junit-core.git</conncetion>
-        <developerConnection> scm:svn:https://svn.apache.org/repos/asf/sling/trunk/testing/junit/core</developerConnection>
-        <url>https://gitbox.apache.org/repos/asf?p=sling-org-apache-sling-junit-core.git.git</url>
+        <developerConnection>scm:git:https://gitbox.apache.org/repos/asf/sling-org-apache-sling-junit-core.git</developerConnection>
+        <url>https://gitbox.apache.org/repos/asf?p=sling-org-apache-sling-junit-core.git</url>
     </scm>
 
     <build>
