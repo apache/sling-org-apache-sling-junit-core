@@ -246,7 +246,7 @@ public class TestsManagerImpl implements TestsManager {
             // wait max inactivityTimeout after the last bundle became active before giving up
             long inactivityTimeout = TimeUnit.SECONDS.toMillis(DEFAULT_SYSTEM_STARTUP_INACTIVITY_TIMEOUT_SECONDS);
             long lastChange = System.currentTimeMillis();
-            while (!bundlesToWaitFor.isEmpty() || (lastChange + inactivityTimeout < System.currentTimeMillis())) {
+            while (!(bundlesToWaitFor.isEmpty() || (lastChange + inactivityTimeout < System.currentTimeMillis()))) {
                 log.info("Waiting for the following bundles to start: {}", bundlesToWaitFor);
                 try {
                     TimeUnit.SECONDS.sleep(1);
