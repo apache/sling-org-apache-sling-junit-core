@@ -16,6 +16,7 @@
  */
 package org.apache.sling.junit.impl;
 
+import java.util.Arrays;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -26,10 +27,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.TimeUnit;
 
-import org.apache.felix.scr.annotations.Component;
-import org.apache.felix.scr.annotations.Service;
 import org.apache.sling.junit.Activator;
 import org.apache.sling.junit.Renderer;
 import org.apache.sling.junit.SlingTestContextProvider;
@@ -42,22 +42,58 @@ import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.Constants;
 import org.osgi.framework.ServiceReference;
+import org.osgi.service.component.annotations.Activate;
+import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.annotations.ConfigurationPolicy;
+import org.osgi.service.component.annotations.Deactivate;
+import org.osgi.service.component.annotations.Modified;
 import org.osgi.service.component.ComponentContext;
+import org.osgi.service.metatype.annotations.AttributeDefinition;
+import org.osgi.service.metatype.annotations.Designate;
+import org.osgi.service.metatype.annotations.ObjectClassDefinition;
 import org.osgi.util.tracker.ServiceTracker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-@Component
-@Service
+@Component(
+    service = TestsManager.class,
+    immediate = true,
+    configurationPolicy = ConfigurationPolicy.OPTIONAL,
+    property = {
+        Constants.SERVICE_DESCRIPTION+"=Service that gives access to JUnit test classes"
+    }
+)
+//The new OSGi R6 property configuration declaration syntax.
+@Designate(ocd = TestsManagerImpl.Config.class, factory=false)
 public class TestsManagerImpl implements TestsManager {
 
-    private static final Logger log = LoggerFactory.getLogger(TestsManagerImpl.class);
+    // Define OSGi R6 property configuration data type object
+    @ObjectClassDefinition(
+            name = "Apache Sling JUnit Tests Manager Service",
+            description = "Service that gives access to JUnit test classes."
+    )
+    @interface Config {
+        // The _'s in the method names (see below) are transformed to . when the
+        // OSGi property names are generated.
+        // Example: max_size -> max.size, user_name_default -> user.name.default
+        @AttributeDefinition(
+                name = "Ignore offline bundles (Symbolic Names)",
+                description = "Do not wait for these bundles.",
+                required = false,
+                cardinality = 500
+            )
+        String[] ignore_bundles() default {};
+    }
+
+	private static final Logger log = LoggerFactory.getLogger(TestsManagerImpl.class);
 
     // the inactivity timeout is the maximum time after the last bundle became active
     // before waiting for more bundles to become active should be aborted
     private static final int DEFAULT_SYSTEM_STARTUP_INACTIVITY_TIMEOUT_SECONDS = 10;
 
     private static volatile boolean waitForSystemStartup = true;
+
+    private static ConcurrentMap<String, Boolean> ignoreBundles = new ConcurrentHashMap<String, Boolean>();
 
     private ServiceTracker tracker;
 
@@ -74,12 +110,19 @@ public class TestsManagerImpl implements TestsManager {
     // Last-modified values for each provider
     private Map<String, Long> lastModified = new HashMap<String, Long>();
     
-    protected void activate(ComponentContext ctx) {
+    @Activate
+    @Modified
+    protected void activate(ComponentContext ctx, Config cfg) {
         bundleContext = ctx.getBundleContext();
         tracker = new ServiceTracker(bundleContext, TestsProvider.class.getName(), null);
         tracker.open();
+        log.debug("Ignore offline bundles (Symbolic Names): {}", Arrays.asList(cfg.ignore_bundles()));
+        for( String bundle : cfg.ignore_bundles() ) {
+            ignoreBundles.put(bundle, true);
+        }
     }
 
+    @Deactivate
     protected void deactivate(ComponentContext ctx) {
         if(tracker != null) {
             tracker.close();
@@ -239,7 +282,12 @@ public class TestsManagerImpl implements TestsManager {
             final Set<Bundle> bundlesToWaitFor = new HashSet<Bundle>();
             for (final Bundle bundle : bundleContext.getBundles()) {
                 if (bundle.getState() != Bundle.ACTIVE && !isFragment(bundle)) {
-                    bundlesToWaitFor.add(bundle);
+                    log.debug("Bundle {} is not active.", bundle.getSymbolicName() );
+                    if( ! ignoreBundles.containsKey( bundle.getSymbolicName() ) ) {
+                        bundlesToWaitFor.add(bundle);
+                    } else {
+                        log.debug("Not waiting for Bundle {} to become active.", bundle.getSymbolicName() );
+                    }
                 }
             }
 
