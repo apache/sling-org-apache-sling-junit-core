@@ -18,23 +18,30 @@ package org.apache.sling.junit.impl;
 
 import java.lang.reflect.Field;
 
-import org.apache.felix.scr.annotations.Component;
-import org.apache.felix.scr.annotations.Service;
 import org.apache.sling.junit.TestObjectProcessor;
 import org.apache.sling.junit.annotations.TestReference;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.ServiceReference;
+import org.osgi.service.component.annotations.Activate;
+import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.annotations.Deactivate;
+import org.osgi.service.component.annotations.Modified;
 import org.osgi.service.component.ComponentContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /** Processor for annotations in test classes */
-@Component(immediate=true)
-@Service
+@SuppressWarnings("deprecation")
+@Component(
+        service = AnnotationsProcessor.class,
+        immediate = true
+)
 public class AnnotationsProcessor implements TestObjectProcessor {
     private Logger log = LoggerFactory.getLogger(getClass());
     private BundleContext bundleContext;
     
+    @Activate
+    @Modified
     protected void activate(ComponentContext ctx) {
         bundleContext = ctx.getBundleContext();
         if(bundleContext == null) {
@@ -43,6 +50,7 @@ public class AnnotationsProcessor implements TestObjectProcessor {
         log.debug("{} activated, BundleContext={}", this, bundleContext);
     }
     
+    @Deactivate
     protected void deactivate(ComponentContext ctx) {
         bundleContext = null;
         log.debug("{} deactivated", this);

@@ -22,11 +22,11 @@ package org.apache.sling.junit.impl.servlet;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.Hashtable;
-import java.util.Map;
 
 import javax.servlet.Filter;
 import javax.servlet.FilterChain;
 import javax.servlet.FilterConfig;
+import javax.servlet.Servlet;
 import javax.servlet.ServletException;
 import javax.servlet.ServletRequest;
 import javax.servlet.ServletResponse;
@@ -34,16 +34,20 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import org.apache.felix.scr.annotations.Activate;
-import org.apache.felix.scr.annotations.Component;
-import org.apache.felix.scr.annotations.Deactivate;
-import org.apache.felix.scr.annotations.Property;
-import org.apache.felix.scr.annotations.Reference;
 import org.apache.sling.commons.osgi.PropertiesUtil;
 import org.junit.runner.Description;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.Constants;
 import org.osgi.framework.ServiceRegistration;
+import org.osgi.service.component.annotations.Activate;
+import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.annotations.ConfigurationPolicy;
+import org.osgi.service.component.annotations.Deactivate;
+import org.osgi.service.component.annotations.Modified;
+import org.osgi.service.component.annotations.Reference;
+import org.osgi.service.metatype.annotations.AttributeDefinition;
+import org.osgi.service.metatype.annotations.Designate;
+import org.osgi.service.metatype.annotations.ObjectClassDefinition;
 import org.osgi.service.http.HttpService;
 import org.osgi.service.http.NamespaceException;
 import org.osgi.service.http.whiteboard.HttpWhiteboardConstants;
@@ -57,11 +61,52 @@ import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.Layout;
 import ch.qos.logback.core.read.CyclicBufferAppender;
 
-@Component(immediate=true, metatype=true,
-        label = "Apache Sling Test Log Collector",
-        description = "Servlet that exposes logs collected for a particular test execution"
-)
+@SuppressWarnings("serial")
+@Component(
+        service = Servlet.class,
+        immediate = true,
+        configurationPolicy = ConfigurationPolicy.OPTIONAL,
+        property = {
+            "servlet.path=/system/sling/testlog",
+            "log.buffer.size:Integer=1000",
+            "logPattern=%d{dd.MM.yyyy HH:mm:ss.SSS} *%level* [%thread] %logger %msg%n"
+        }
+    )
+@Designate(ocd = TestLogServlet.Config.class, factory = false)
 public class TestLogServlet extends HttpServlet {
+
+    // Define OSGi R6 property configuration data type object
+    @ObjectClassDefinition(
+            name = "Apache Sling Test Log Collector",
+            description = "Servlet that exposes logs collected for a particular test execution"
+    )
+    @interface Config {
+        // The _'s in the method names (see below) are transformed to . when the 
+        // OSGi property names are generated.
+        // Example: max_size -> max.size, user_name_default -> user.name.default
+        
+        @AttributeDefinition(
+                name = "Servlet path for Apache Sling Test Log Collector",
+                description = "The URL for accessing Apache Sling Test Log Collector.  Empty to disable.",
+                required = false
+            )
+        String servlet_path() default "/system/sling/testlog";
+        
+        @AttributeDefinition(
+                name = "Log Buffer Size",
+                description = "Size of in memory log buffer. Only recent logs upto buffer size would be retained",
+                required = true // Defaults to true
+        )
+        int log_buffer_size() default DEFAULT_SIZE;
+        
+        @AttributeDefinition(
+            name = "Log Pattern",
+            description = "Message Pattern for formatting the log messages",
+            required = true 
+        )
+        String logPattern() default DEFAULT_PATTERN;
+    }
+    
     private final Logger log = LoggerFactory.getLogger(getClass());
 
     //These name should be kept in sync with
@@ -70,25 +115,8 @@ public class TestLogServlet extends HttpServlet {
     public static final String TEST_NAME = "X-Sling-TestName";
     public static final String TEST_CLASS = "X-Sling-TestClass";
 
-    @Property(value="/system/sling/testlog")
-    static final String SERVLET_PATH_NAME = "servlet.path";
-
     static final int DEFAULT_SIZE = 1000;
-    @Property(intValue = DEFAULT_SIZE,
-            label = "Log Buffer Size",
-            description = "Size of in memory log buffer. Only recent logs upto buffer size would be retained"
-    )
-    static final String LOG_BUFFER_SIZE = "log.buffer.size";
-
     private static final String DEFAULT_PATTERN = "%d{dd.MM.yyyy HH:mm:ss.SSS} *%level* [%thread] %logger %msg%n";
-
-    @Property(label = "Log Pattern",
-            description = "Message Pattern for formatting the log messages",
-            value = DEFAULT_PATTERN
-    )
-    private static final String PROP_MSG_PATTERN = "logPattern";
-
-    /** Non-null if we are registered with HttpService */
     private String servletPath;
 
     @Reference
@@ -98,6 +126,7 @@ public class TestLogServlet extends HttpServlet {
 
     private Layout<ILoggingEvent> layout;
 
+    @SuppressWarnings("rawtypes")
     private ServiceRegistration filter;
 
     private volatile Description currentTest;
@@ -105,11 +134,12 @@ public class TestLogServlet extends HttpServlet {
     private final Object appenderLock = new Object();
 
     @Activate
-    protected void activate(BundleContext ctx, Map<String, ?> config) throws Exception {
-        registerServlet(config);
-        registerAppender(config);
+    @Modified
+    protected void activate(BundleContext ctx, Config cfg) throws Exception {
+        registerServlet(cfg);
+        registerAppender(cfg);
         registerFilter(ctx);
-        createLayout(config);
+        createLayout(cfg);
     }
 
     @Deactivate
@@ -166,9 +196,9 @@ public class TestLogServlet extends HttpServlet {
         }
     }
 
-    private void registerAppender(Map<String, ?> config) {
+    private void registerAppender(Config cfg) {
         synchronized (appenderLock) {
-            int size = PropertiesUtil.toInteger(config.get(LOG_BUFFER_SIZE), DEFAULT_SIZE);
+            int size = cfg.log_buffer_size();
             appender = new CyclicBufferAppender<ILoggingEvent>();
             appender.setMaxSize(size);
             appender.setContext(getContext());
@@ -188,8 +218,8 @@ public class TestLogServlet extends HttpServlet {
         }
     }
 
-    private void createLayout(Map<String, ?> config) {
-        String pattern = PropertiesUtil.toString(config.get(PROP_MSG_PATTERN), DEFAULT_PATTERN);
+    private void createLayout(Config cfg) {
+        String pattern = PropertiesUtil.toString(cfg.logPattern(), DEFAULT_PATTERN);
         PatternLayout pl = new PatternLayout();
         pl.setPattern(pattern);
         pl.setOutputPatternAsHeader(false);
@@ -205,8 +235,8 @@ public class TestLogServlet extends HttpServlet {
         }
     }
 
-    private void registerServlet(Map<String, ?> config) throws ServletException, NamespaceException {
-        servletPath = getServletPath(config);
+    private void registerServlet(Config cfg) throws ServletException, NamespaceException {
+        servletPath = cfg.servlet_path().isEmpty() ? null : cfg.servlet_path();
         if(servletPath == null) {
             log.info("Servlet path is null, not registering with HttpService");
         } else {
@@ -279,19 +309,6 @@ public class TestLogServlet extends HttpServlet {
     }
 
     //~------------------------------------------------< utility >
-
-    /**
-     * Return the path at which to mount this servlet, or null
-     * if it must not be mounted.
-     */
-    private static String getServletPath(Map<String, ?> config) {
-        String result = (String)config.get(SERVLET_PATH_NAME);
-        if(result != null && result.trim().length() == 0) {
-            result = null;
-        }
-        return result;
-    }
-
     private static LoggerContext getContext(){
         return (LoggerContext) LoggerFactory.getILoggerFactory();
     }

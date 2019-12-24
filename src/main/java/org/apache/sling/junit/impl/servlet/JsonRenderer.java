@@ -26,8 +26,6 @@ import javax.json.JsonException;
 import javax.json.stream.JsonGenerator;
 import javax.servlet.http.HttpServletResponse;
 
-import org.apache.felix.scr.annotations.Component;
-import org.apache.felix.scr.annotations.Service;
 import org.apache.sling.junit.Renderer;
 import org.apache.sling.junit.RendererFactory;
 import org.apache.sling.junit.SlingTestContextProvider;
@@ -36,12 +34,17 @@ import org.junit.runner.Description;
 import org.junit.runner.Result;
 import org.junit.runner.notification.Failure;
 import org.junit.runner.notification.RunListener;
+import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.annotations.ServiceScope;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /** Json renderer for JUnit servlet */
-@Component(immediate=false)
-@Service
+@Component(
+        service = JsonRenderer.class,
+        immediate = false,
+        scope = ServiceScope.BUNDLE
+)
 public class JsonRenderer extends RunListener implements Renderer,RendererFactory {
 
     public static final String EXTENSION = "json";

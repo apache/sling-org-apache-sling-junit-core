@@ -16,34 +16,49 @@
  */
 package org.apache.sling.junit.impl.servlet;
 
-import org.apache.felix.scr.annotations.Component;
-import org.apache.felix.scr.annotations.Property;
-import org.apache.felix.scr.annotations.Reference;
-import org.jacoco.agent.rt.IAgent;
-import org.osgi.service.component.ComponentContext;
-import org.osgi.service.http.HttpService;
-import org.osgi.service.http.NamespaceException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import java.io.IOException;
+import java.lang.management.ManagementFactory;
 
 import javax.management.MBeanServer;
 import javax.management.MBeanServerInvocationHandler;
 import javax.management.MalformedObjectNameException;
 import javax.management.ObjectName;
+import javax.servlet.Servlet;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import java.io.IOException;
-import java.lang.management.ManagementFactory;
-import java.util.Dictionary;
 
+import org.jacoco.agent.rt.IAgent;
+import org.osgi.framework.Constants;
+import org.osgi.service.component.annotations.Activate;
+import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.annotations.ConfigurationPolicy;
+import org.osgi.service.component.annotations.Deactivate;
+import org.osgi.service.component.annotations.Modified;
+import org.osgi.service.component.annotations.Reference;
+import org.osgi.service.metatype.annotations.AttributeDefinition;
+import org.osgi.service.metatype.annotations.Designate;
+import org.osgi.service.metatype.annotations.ObjectClassDefinition;
+import org.osgi.service.http.HttpService;
+import org.osgi.service.http.NamespaceException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 /**
  * This servlet exposes JaCoCo code coverage data over HTTP. See {@link #EXPLAIN} for usage information,
  * which is also available at /system/sling/jacoco after installing this servlet with the default settings.
  */
 @SuppressWarnings("serial")
-@Component(immediate = true, metatype = true)
+@Component(
+        service = Servlet.class,
+        immediate = true,
+        configurationPolicy = ConfigurationPolicy.OPTIONAL,
+        property = {
+            Constants.SERVICE_DESCRIPTION+"=This servlet exposes JaCoCo (http://www.eclemma.org/jacoco) code coverage data.",
+            "servlet.path=/system/sling/jacoco"
+        }
+    )
+@Designate(ocd = JacocoServlet.Config.class, factory = false)
 public class JacocoServlet extends HttpServlet {
     private static final String PARAM_SESSION_ID = ":sessionId";
     private static final String JMX_NAME = "org.jacoco:type=Runtime";
@@ -69,10 +84,23 @@ public class JacocoServlet extends HttpServlet {
             + "  open target/site/jacoco/index.html\n\n"
             ;
     
+    // Define OSGi R6 property configuration data type object
+    @ObjectClassDefinition(
+            name = "Apache Sling JUnit JaCoCo (http://www.eclemma.org/jacoco) Code Coverage Servlet",
+            description = EXPLAIN
+    )
+    @interface Config {
+        // The _'s in the method names (see below) are transformed to . when the
+        // OSGi property names are generated.
+        // Example: max_size -> max.size, user_name_default -> user.name.default
+        @AttributeDefinition(
+                name = "Servlet path for JacocoServlet",
+                description = "Set to empty to disable",
+                required = false
+            )
+        String servlet_path() default "/system/sling/jacoco";
+    }
     private final Logger log = LoggerFactory.getLogger(getClass());
-
-    @Property(value="/system/sling/jacoco")
-    static final String SERVLET_PATH_NAME = "servlet.path";
 
     /** Requests ending with this subpath send the jacoco data */
     public static final String EXEC_PATH = "/exec";
@@ -83,8 +111,10 @@ public class JacocoServlet extends HttpServlet {
     @Reference
     private HttpService httpService;
 
-    protected void activate(ComponentContext ctx) throws ServletException, NamespaceException {
-        servletPath = getServletPath(ctx);
+    @Activate
+    @Modified
+    protected void activate(Config cfg) throws ServletException, NamespaceException {
+        servletPath = cfg.servlet_path().isEmpty() ? null : cfg.servlet_path();
         if(servletPath == null) {
             log.info("Servlet path is null, not registering with HttpService");
         } else {
@@ -93,19 +123,8 @@ public class JacocoServlet extends HttpServlet {
         }
     }
 
-    /** Return the path at which to mount this servlet, or null
-     *  if it must not be mounted.
-     */
-    protected String getServletPath(ComponentContext ctx) {
-        final Dictionary<?, ?> config = ctx.getProperties();
-        String result = (String)config.get(SERVLET_PATH_NAME);
-        if(result != null && result.trim().length() == 0) {
-            result = null;
-        }
-        return result;
-    }
-
-    protected void deactivate(ComponentContext ctx) throws ServletException, NamespaceException {
+    @Deactivate
+    protected void deactivate(Config cfg) throws ServletException, NamespaceException {
         if(servletPath != null) {
             httpService.unregister(servletPath);
             log.info("Servlet unregistered from path {}", servletPath);

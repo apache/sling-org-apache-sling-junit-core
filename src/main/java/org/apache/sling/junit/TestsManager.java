@@ -18,7 +18,8 @@ package org.apache.sling.junit;
 
 import java.util.Collection;
 
-import aQute.bnd.annotation.ProviderType;
+import org.osgi.annotation.versioning.ProviderType;
+
 
 /** Service that gives access to JUnit test classes */
 @ProviderType

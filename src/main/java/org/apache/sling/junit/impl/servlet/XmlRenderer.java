@@ -38,8 +38,6 @@ import javax.xml.transform.stream.StreamResult;
 
 import junit.runner.BaseTestRunner;
 
-import org.apache.felix.scr.annotations.Component;
-import org.apache.felix.scr.annotations.Service;
 import org.apache.sling.junit.Renderer;
 import org.apache.sling.junit.RendererFactory;
 import org.apache.sling.junit.TestSelector;
@@ -47,13 +45,18 @@ import org.junit.runner.Description;
 import org.junit.runner.Result;
 import org.junit.runner.notification.Failure;
 import org.junit.runner.notification.RunListener;
+import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.annotations.ServiceScope;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Text;
 
 /** XML renderer for JUnit servlet */
-@Component(immediate=false)
-@Service
+@Component(
+        service = XmlRenderer.class,
+        immediate = false,
+        scope = ServiceScope.BUNDLE
+)
 public class XmlRenderer extends RunListener implements Renderer, RendererFactory {
     
     /**

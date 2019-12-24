@@ -25,15 +25,17 @@ import java.util.Map;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
-import org.apache.felix.scr.annotations.Component;
-import org.apache.felix.scr.annotations.Service;
 import org.apache.sling.junit.TestsProvider;
+import org.osgi.service.component.annotations.Activate;
+import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.annotations.Deactivate;
+import org.osgi.service.component.annotations.Modified;
+import org.osgi.service.component.ComponentContext;
+import org.osgi.framework.Constants;
 import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.BundleEvent;
 import org.osgi.framework.BundleListener;
-import org.osgi.framework.Constants;
-import org.osgi.service.component.ComponentContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,8 +43,10 @@ import org.slf4j.LoggerFactory;
  *  that have a Sling-Test-Regexp header and corresponding
  *  exported classes.
  */
-@Component
-@Service
+@Component(
+        service = BundleTestsProvider.class,
+        immediate = true
+)
 public class BundleTestsProvider implements TestsProvider, BundleListener {
     private final Logger log = LoggerFactory.getLogger(getClass());
     private long lastModified;
@@ -61,6 +65,8 @@ public class BundleTestsProvider implements TestsProvider, BundleListener {
      */
     private final Map<String, List<String>> testClassesMap = new HashMap<String, List<String>>();
 
+    @Activate
+    @Modified
     protected void activate(ComponentContext ctx) {
         bundleContext = ctx.getBundleContext();
         bundleContext.addBundleListener(this);
@@ -76,7 +82,8 @@ public class BundleTestsProvider implements TestsProvider, BundleListener {
         lastModified = System.currentTimeMillis();
         pid = (String)ctx.getProperties().get(Constants.SERVICE_PID);
     }
-    
+
+    @Deactivate
     protected void deactivate(ComponentContext ctx) {
         bundleContext.removeBundleListener(this);
         bundleContext = null;

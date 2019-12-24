@@ -17,19 +17,26 @@
 package org.apache.sling.junit.impl.servlet;
 
 import java.io.IOException;
-import java.util.Dictionary;
 
+import javax.servlet.Servlet;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import org.apache.felix.scr.annotations.Component;
-import org.apache.felix.scr.annotations.Property;
-import org.apache.felix.scr.annotations.Reference;
+import org.osgi.service.component.annotations.Activate;
+import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.annotations.ConfigurationPolicy;
+import org.osgi.service.component.annotations.Deactivate;
+import org.osgi.service.component.annotations.Modified;
+import org.osgi.service.component.annotations.Reference;
+import org.osgi.framework.Constants;
+import org.osgi.service.component.ComponentContext;
+import org.osgi.service.metatype.annotations.AttributeDefinition;
+import org.osgi.service.metatype.annotations.Designate;
+import org.osgi.service.metatype.annotations.ObjectClassDefinition;
 import org.apache.sling.junit.RendererSelector;
 import org.apache.sling.junit.TestsManager;
-import org.osgi.service.component.ComponentContext;
 import org.osgi.service.http.HttpService;
 import org.osgi.service.http.NamespaceException;
 import org.slf4j.Logger;
@@ -37,13 +44,36 @@ import org.slf4j.LoggerFactory;
 
 /** Simple test runner servlet */
 @SuppressWarnings("serial")
-@Component(immediate=true, metatype=true)
+@Component(
+        service = Servlet.class,
+        immediate = true,
+        configurationPolicy = ConfigurationPolicy.OPTIONAL,
+        property = {
+            Constants.SERVICE_DESCRIPTION+"=Service that gives access to JUnit test classes",
+            "servlet.path=/system/sling/junit",
+        }
+)
+@Designate(ocd = JUnitServlet.Config.class, factory = false)
 public class JUnitServlet extends HttpServlet {
 
-    private final Logger log = LoggerFactory.getLogger(getClass());
+    // Define OSGi R6 property configuration data type object
+    @ObjectClassDefinition(
+            name = "Apache Sling JUnit Servlet",
+            description = "A Sling JUnit Servlet that runs JUnit tests found in bundles."
+    )
+    @interface Config {
+        // The _'s in the method names (see below) are transformed to . when the
+        // OSGi property names are generated.
+        // Example: max_size -> max.size, user_name_default -> user.name.default
+        @AttributeDefinition(
+                name = "Servlet path for JUnitServlet",
+                description = "Set to empty to disable this Servlet",
+                required = false
+            )
+        String servlet_path() default "/system/sling/junit";
+    }
 
-    @Property(value="/system/sling/junit")
-    static final String SERVLET_PATH_NAME = "servlet.path";
+    private final Logger log = LoggerFactory.getLogger(getClass());
 
     /** Non-null if we are registered with HttpService */
     private String servletPath;
@@ -59,8 +89,10 @@ public class JUnitServlet extends HttpServlet {
 
     private volatile ServletProcessor processor;
 
-    protected void activate(final ComponentContext ctx) throws ServletException, NamespaceException {
-        servletPath = getServletPath(ctx);
+    @Activate
+    @Modified
+    protected void activate(final ComponentContext ctx, Config cfg) throws ServletException, NamespaceException {
+        servletPath = cfg.servlet_path().isEmpty() ? null : cfg.servlet_path();
         if(servletPath == null) {
             log.info("Servlet path is null, not registering with HttpService");
         } else {
@@ -70,18 +102,7 @@ public class JUnitServlet extends HttpServlet {
         }
     }
 
-    /** Return the path at which to mount this servlet, or null
-     *  if it must not be mounted.
-     */
-    private String getServletPath(ComponentContext ctx) {
-        final Dictionary<?, ?> config = ctx.getProperties();
-        String result = (String)config.get(SERVLET_PATH_NAME);
-        if(result != null && result.trim().length() == 0) {
-            result = null;
-        }
-        return result;
-    }
-
+    @Deactivate
     protected void deactivate(ComponentContext ctx) throws ServletException, NamespaceException {
         if(servletPath != null) {
             httpService.unregister(servletPath);

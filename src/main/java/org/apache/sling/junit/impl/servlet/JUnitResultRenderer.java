@@ -23,21 +23,24 @@ import java.util.Collection;
 
 import javax.servlet.http.HttpServletResponse;
 
-import org.apache.felix.scr.annotations.Component;
-import org.apache.felix.scr.annotations.Service;
 import org.apache.sling.junit.Renderer;
 import org.apache.sling.junit.RendererFactory;
 import org.apache.sling.junit.TestSelector;
 import org.junit.runner.Result;
 import org.junit.runner.notification.RunListener;
+import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.annotations.ServiceScope;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /** Renderer for Sling JUnit server-side testing, which
  *  renders the serialized JUnit Result object.
  */
-@Component
-@Service
+@Component(
+        service = JUnitResultRenderer.class,
+        immediate = true,
+        scope = ServiceScope.BUNDLE
+)
 public class JUnitResultRenderer extends RunListener implements Renderer,RendererFactory {
 
     public static final String EXTENSION = "junit_result";
