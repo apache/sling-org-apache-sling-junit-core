@@ -41,13 +41,13 @@ import org.slf4j.LoggerFactory;
 
 /** Default RendererSelector */
 @Component(
-        service = RendererSelector.class,
-        immediate = false
+    service = RendererSelector.class,
+    immediate = false
 )
 public class RendererSelectorImpl implements RendererSelector {
     private final Logger log = LoggerFactory.getLogger(getClass());
     private final List<Renderer> renderers = new ArrayList<Renderer>();
-    private ServiceTracker renderersTracker;
+    private ServiceTracker<Renderer,Renderer> renderersTracker;
     private int renderersTrackerTrackingCount = -1;
     private BundleContext bundleContext;
     
@@ -56,13 +56,14 @@ public class RendererSelectorImpl implements RendererSelector {
     }
     
     public Renderer getRenderer(TestSelector selector) {
+        log.debug("Detected renderers {}", renderers);
         if(renderersTracker.getTrackingCount() != renderersTrackerTrackingCount) {
             log.debug("Rebuilding list of {}", Renderer.class.getSimpleName());
             renderersTrackerTrackingCount = renderersTracker.getTrackingCount();
-            final ServiceReference [] refs = renderersTracker.getServiceReferences();
+            final ServiceReference<Renderer> [] refs = renderersTracker.getServiceReferences();
             renderers.clear();
             if(refs != null) {
-                for(ServiceReference ref : refs) {
+                for(ServiceReference<Renderer> ref : refs) {
                     renderers.add( (Renderer)bundleContext.getService(ref) );
                 }
             }
@@ -87,7 +88,7 @@ public class RendererSelectorImpl implements RendererSelector {
     @Modified
     protected void activate(ComponentContext ctx) throws ServletException, NamespaceException {
         bundleContext = ctx.getBundleContext();
-        renderersTracker = new ServiceTracker(ctx.getBundleContext(), Renderer.class.getName(), null);
+        renderersTracker = new ServiceTracker<Renderer,Renderer>(ctx.getBundleContext(), Renderer.class.getName(), null);
         renderersTracker.open();
     }
     

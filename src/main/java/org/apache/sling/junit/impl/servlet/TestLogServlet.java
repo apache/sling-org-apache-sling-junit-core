@@ -61,19 +61,20 @@ import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.Layout;
 import ch.qos.logback.core.read.CyclicBufferAppender;
 
-@SuppressWarnings("serial")
 @Component(
-        service = Servlet.class,
-        immediate = true,
-        configurationPolicy = ConfigurationPolicy.OPTIONAL,
-        property = {
-            "servlet.path=/system/sling/testlog",
-            "log.buffer.size:Integer=1000",
-            "logPattern=%d{dd.MM.yyyy HH:mm:ss.SSS} *%level* [%thread] %logger %msg%n"
-        }
-    )
+    service = Servlet.class,
+    immediate = true,
+    configurationPolicy = ConfigurationPolicy.OPTIONAL,
+    property = {
+        "servlet.path=/system/sling/testlog",
+        "log.buffer.size:Integer=1000",
+        "logPattern=%d{dd.MM.yyyy HH:mm:ss.SSS} *%level* [%thread] %logger %msg%n"
+    }
+)
 @Designate(ocd = TestLogServlet.Config.class, factory = false)
 public class TestLogServlet extends HttpServlet {
+
+    private static final long serialVersionUID = -6640756919035732937L;
 
     // Define OSGi R6 property configuration data type object
     @ObjectClassDefinition(

@@ -25,12 +25,18 @@ import org.slf4j.LoggerFactory;
 import org.slf4j.Logger;
 
 public class TestContextRunListenerWrapper extends RunListener {
+    private final Exception systemstartupfailure;
     private final RunListener wrapped;
     private long testStartTime;
     private static final Logger log = LoggerFactory.getLogger(TestContextRunListenerWrapper.class);
     
-    TestContextRunListenerWrapper(RunListener toWrap) {
+    TestContextRunListenerWrapper(RunListener toWrap, Exception startupfailure ) {
         wrapped = toWrap;
+        systemstartupfailure = startupfailure;
+    }
+
+    TestContextRunListenerWrapper(RunListener toWrap ) {
+    	this( toWrap, null );
     }
 
     @Override
@@ -71,5 +77,9 @@ public class TestContextRunListenerWrapper extends RunListener {
     public void testStarted(Description description) throws Exception {
         testStartTime = System.currentTimeMillis();
         wrapped.testStarted(description);
+        if( systemstartupfailure != null ) {
+            // Return meaningful startup failure message to Teleporter client.
+            throw systemstartupfailure;
+        }
     }
 }

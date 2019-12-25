@@ -45,13 +45,13 @@ import org.slf4j.LoggerFactory;
 /** Simple test runner servlet */
 @SuppressWarnings("serial")
 @Component(
-        service = Servlet.class,
-        immediate = true,
-        configurationPolicy = ConfigurationPolicy.OPTIONAL,
-        property = {
-            Constants.SERVICE_DESCRIPTION+"=Service that gives access to JUnit test classes",
-            "servlet.path=/system/sling/junit",
-        }
+    service = Servlet.class,
+    immediate = true,
+    configurationPolicy = ConfigurationPolicy.OPTIONAL,
+    property = {
+        Constants.SERVICE_DESCRIPTION+"=Service that gives access to JUnit test classes",
+        "servlet.path=/system/sling/junit",
+    }
 )
 @Designate(ocd = JUnitServlet.Config.class, factory = false)
 public class JUnitServlet extends HttpServlet {

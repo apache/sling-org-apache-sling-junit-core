@@ -33,8 +33,8 @@ import org.slf4j.LoggerFactory;
 /** Processor for annotations in test classes */
 @SuppressWarnings("deprecation")
 @Component(
-        service = AnnotationsProcessor.class,
-        immediate = true
+    service = TestObjectProcessor.class,
+    immediate = true
 )
 public class AnnotationsProcessor implements TestObjectProcessor {
     private Logger log = LoggerFactory.getLogger(getClass());

@@ -37,9 +37,9 @@ import org.slf4j.LoggerFactory;
  *  renders the serialized JUnit Result object.
  */
 @Component(
-        service = JUnitResultRenderer.class,
-        immediate = true,
-        scope = ServiceScope.BUNDLE
+    service = Renderer.class,
+    immediate = false,
+    scope = ServiceScope.BUNDLE
 )
 public class JUnitResultRenderer extends RunListener implements Renderer,RendererFactory {
 

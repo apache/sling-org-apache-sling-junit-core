@@ -41,12 +41,14 @@ import org.junit.runner.Request;
 import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.Constants;
+import org.osgi.framework.ServiceException;
 import org.osgi.framework.ServiceReference;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.ConfigurationPolicy;
 import org.osgi.service.component.annotations.Deactivate;
 import org.osgi.service.component.annotations.Modified;
+import org.osgi.service.component.annotations.ServiceScope;
 import org.osgi.service.component.ComponentContext;
 import org.osgi.service.metatype.annotations.AttributeDefinition;
 import org.osgi.service.metatype.annotations.Designate;
@@ -77,6 +79,18 @@ public class TestsManagerImpl implements TestsManager {
         // OSGi property names are generated.
         // Example: max_size -> max.size, user_name_default -> user.name.default
         @AttributeDefinition(
+                name = "Wait for system startup.",
+                description = "Wait for system start up.  Otherwise abort upon detecting inactive bundles."
+            )
+        boolean wait_for_system_startup() default true;
+
+        @AttributeDefinition(
+                name = "System start up inactivity timeout seconds.",
+                description = "Seconds to wait for all inactive bundles to startup before error out."
+            )
+        int wait_seconds() default DEFAULT_SYSTEM_STARTUP_INACTIVITY_TIMEOUT_SECONDS;
+
+        @AttributeDefinition(
                 name = "Ignore offline bundles (Symbolic Names)",
                 description = "Do not wait for these bundles.",
                 required = false,
@@ -87,15 +101,18 @@ public class TestsManagerImpl implements TestsManager {
 
 	private static final Logger log = LoggerFactory.getLogger(TestsManagerImpl.class);
 
+
     // the inactivity timeout is the maximum time after the last bundle became active
     // before waiting for more bundles to become active should be aborted
     private static final int DEFAULT_SYSTEM_STARTUP_INACTIVITY_TIMEOUT_SECONDS = 10;
 
-    private static volatile boolean waitForSystemStartup = true;
+    private boolean waitForSystemStartup = true; 
+    private boolean newInactiveBundleFound = true; 
+    private int waitSystemStartupSeconds = DEFAULT_SYSTEM_STARTUP_INACTIVITY_TIMEOUT_SECONDS;
+    private ConcurrentMap<String, Boolean> ignoreBundles = new ConcurrentHashMap<String, Boolean>();
+    private ConcurrentMap<String, Bundle> bundlesToWaitFor = new ConcurrentHashMap<String, Bundle>();
 
-    private static ConcurrentMap<String, Boolean> ignoreBundles = new ConcurrentHashMap<String, Boolean>();
-
-    private ServiceTracker tracker;
+    private ServiceTracker<TestsProvider,TestsProvider> tracker;
 
     private int lastTrackingCount = -1;
 
@@ -114,12 +131,16 @@ public class TestsManagerImpl implements TestsManager {
     @Modified
     protected void activate(ComponentContext ctx, Config cfg) {
         bundleContext = ctx.getBundleContext();
-        tracker = new ServiceTracker(bundleContext, TestsProvider.class.getName(), null);
+        tracker = new ServiceTracker<TestsProvider,TestsProvider>(bundleContext, TestsProvider.class.getName(), null);
         tracker.open();
         log.debug("Ignore offline bundles (Symbolic Names): {}", Arrays.asList(cfg.ignore_bundles()));
         for( String bundle : cfg.ignore_bundles() ) {
             ignoreBundles.put(bundle, true);
         }
+        waitSystemStartupSeconds = cfg.wait_seconds();
+        log.debug("System startup wait seconds: {}", waitSystemStartupSeconds);
+        waitForSystemStartup = cfg.wait_for_system_startup();
+        log.debug("Wait for system startup: {}", waitForSystemStartup);
     }
 
     @Deactivate
@@ -129,12 +150,16 @@ public class TestsManagerImpl implements TestsManager {
         }
         tracker = null;
         bundleContext = null;
+        newInactiveBundleFound = true;
     }
     
     public void clearCaches() {
         log.debug("Clearing internal caches");
         lastModified.clear();
         lastTrackingCount = -1;
+        bundlesToWaitFor.clear();
+        ignoreBundles.clear();
+        newInactiveBundleFound = false;
     }
     
     public Class<?> getTestClass(String testName) throws ClassNotFoundException {
@@ -216,7 +241,7 @@ public class TestsManagerImpl implements TestsManager {
             // List of providers changed, need to reload everything
             lastModified.clear();
             List<TestsProvider> newList = new ArrayList<TestsProvider>();
-            for(ServiceReference ref : tracker.getServiceReferences()) {
+            for(ServiceReference<TestsProvider> ref : tracker.getServiceReferences()) {
                 newList.add((TestsProvider)bundleContext.getService(ref));
             }
             synchronized (providers) {
@@ -230,7 +255,16 @@ public class TestsManagerImpl implements TestsManager {
 
     public void executeTests(Collection<String> testNames, Renderer renderer, TestSelector selector) throws Exception {
         renderer.title(2, "Running tests");
-        waitForSystemStartup();
+
+        Exception startupFailure = null;
+        try {
+            waitForSystemStartup();
+        } catch ( Exception e ) {
+            // for returning meaningful message to Teleporter client instead 
+            // of HTTP 500.
+            startupFailure = e;
+        }
+
         final JUnitCore junit = new JUnitCore();
         
         // Create a test context if we don't have one yet
@@ -240,7 +274,7 @@ public class TestsManagerImpl implements TestsManager {
         }
         
         try {
-            junit.addListener(new TestContextRunListenerWrapper(renderer.getRunListener()));
+            junit.addListener(new TestContextRunListenerWrapper(renderer.getRunListener(), startupFailure));
             for(String className : testNames) {
                 renderer.title(3, className);
                 
@@ -275,24 +309,34 @@ public class TestsManagerImpl implements TestsManager {
     }
 
 
-    public static void waitForSystemStartup() {
-        if (waitForSystemStartup) {
-            waitForSystemStartup = false;
-            final BundleContext bundleContext = Activator.getBundleContext();
-            final Set<Bundle> bundlesToWaitFor = new HashSet<Bundle>();
-            for (final Bundle bundle : bundleContext.getBundles()) {
-                if (bundle.getState() != Bundle.ACTIVE && !isFragment(bundle)) {
-                    log.debug("Bundle {} is not active.", bundle.getSymbolicName() );
-                    if( ! ignoreBundles.containsKey( bundle.getSymbolicName() ) ) {
-                        bundlesToWaitFor.add(bundle);
-                    } else {
-                        log.debug("Not waiting for Bundle {} to become active.", bundle.getSymbolicName() );
+    private synchronized void waitForSystemStartup() {
+
+        // always detect inactive bundles
+        final BundleContext bundleContext = Activator.getBundleContext();
+        for (final Bundle bundle : bundleContext.getBundles()) {
+            if (bundle.getState() != Bundle.ACTIVE && !isFragment(bundle)) {
+                log.debug("Bundle {} is not active.", bundle.getSymbolicName() );
+                if( ! ignoreBundles.containsKey( bundle.getSymbolicName() ) ) {
+                    if( ! bundlesToWaitFor.containsKey(bundle.getSymbolicName() ) ) {
+                        bundlesToWaitFor.put(bundle.getSymbolicName(), bundle);
+                        bundle.getSymbolicName();
+                        newInactiveBundleFound = true;
                     }
+                } else {
+                    log.debug("Not waiting for Bundle {} to become active.", bundle.getSymbolicName() );
                 }
             }
+        }
+
+        if (waitForSystemStartup && newInactiveBundleFound ) {
+
+            // Only wait for newly detected inactive bundles.  Inactive bundles
+            // usually stays inactive until manual intervention was made.  There 
+        	// is no need to wait for bundles that have already failed.
+            newInactiveBundleFound = false;
 
             // wait max inactivityTimeout after the last bundle became active before giving up
-            long inactivityTimeout = TimeUnit.SECONDS.toMillis(DEFAULT_SYSTEM_STARTUP_INACTIVITY_TIMEOUT_SECONDS);
+            long inactivityTimeout = TimeUnit.SECONDS.toMillis(waitSystemStartupSeconds);
             long lastChange = System.currentTimeMillis();
             while (!(bundlesToWaitFor.isEmpty() || (lastChange + inactivityTimeout < System.currentTimeMillis()))) {
                 log.info("Waiting for the following bundles to start: {}", bundlesToWaitFor);
@@ -301,23 +345,43 @@ public class TestsManagerImpl implements TestsManager {
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                 }
-                Iterator<Bundle> bundles = bundlesToWaitFor.iterator();
+                Iterator<Map.Entry<String,Bundle>> bundles = bundlesToWaitFor.entrySet().iterator();
                 while (bundles.hasNext()) {
-                    Bundle bundle = bundles.next();
-                    if (bundle.getState() == Bundle.ACTIVE) {
+                    Map.Entry<String,Bundle> bundle = bundles.next();
+                    if (bundle.getValue().getState() == Bundle.ACTIVE) {
                         bundles.remove();
-                        log.debug("Bundle {} has become active", bundle.getSymbolicName());
-                        lastChange = System.currentTimeMillis();
+                        log.debug("Bundle {} has become active", bundle.getValue().getSymbolicName());
                     }
                 }
             }
-
-            if (!bundlesToWaitFor.isEmpty()) {
-                log.warn("Waited {} seconds but the following bundles are not yet started: {}",
-                        DEFAULT_SYSTEM_STARTUP_INACTIVITY_TIMEOUT_SECONDS, bundlesToWaitFor);
-            } else {
-                log.info("All bundles are active, starting to run tests.");
+        } else {
+            // only detect inactive bundles 
+            Iterator<Map.Entry<String,Bundle>> bundles = bundlesToWaitFor.entrySet().iterator();
+            while (bundles.hasNext()) {
+                Map.Entry<String,Bundle> bundle = bundles.next();
+                if (bundle.getValue().getState() == Bundle.ACTIVE) {
+                    bundles.remove();
+                    log.debug("Bundle {} has become active", bundle.getValue().getSymbolicName());
+                }
             }
+        }
+
+        if (!bundlesToWaitFor.isEmpty()) {
+            if( waitForSystemStartup ) {
+                log.warn("Waited {} seconds but the following bundles are not yet started: {}",
+                         waitSystemStartupSeconds, bundlesToWaitFor.keySet());
+            } else {
+                log.warn("Following bundles are not yet started: {}",
+                         bundlesToWaitFor.keySet());
+            }
+            throw new ServiceException(
+                String.format("Inactive bundles %s detected.  Cannot run tests until inactive bundles "+
+                              "are recovered or added to Apache Sling JUnit Tests Manager Service "+
+                		      "'ignore.bundles' list.", bundlesToWaitFor.keySet() ),
+                ServiceException.SUBCLASSED
+            );
+        } else {
+            log.info("All bundles are active, starting to run tests.");
         }
     }
 

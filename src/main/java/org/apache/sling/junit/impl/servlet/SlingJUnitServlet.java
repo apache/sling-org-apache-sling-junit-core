@@ -50,20 +50,21 @@ import org.osgi.service.http.NamespaceException;
  *  type, to call it a Sling resource must be created
  *  with this resource type.
  */
-@SuppressWarnings("serial")
 @Component(
-        service = Servlet.class,
-        immediate = true,
-        configurationPolicy = ConfigurationPolicy.OPTIONAL,
-        property = {
-            Constants.SERVICE_DESCRIPTION+"=Service that gives access to JUnit test classes",
-            "sling.servlet.resourceTypes=sling/junit/testing",
-            "sling.servlet.extensions=junit",
-            "sling.servlet.methods=GET",
-            "sling.servlet.methods=POST",
-        }
+    service = Servlet.class,
+    immediate = true,
+    configurationPolicy = ConfigurationPolicy.OPTIONAL,
+    property = {
+        Constants.SERVICE_DESCRIPTION+"=Service that gives access to JUnit test classes",
+        "sling.servlet.resourceTypes=sling/junit/testing",
+        "sling.servlet.extensions=junit",
+        "sling.servlet.methods=GET",
+        "sling.servlet.methods=POST",
+    }
 )
 public class SlingJUnitServlet extends HttpServlet {
+
+    private static final long serialVersionUID = 8215568832011130211L;
 
     public static final String EXTENSION = ".junit";
 

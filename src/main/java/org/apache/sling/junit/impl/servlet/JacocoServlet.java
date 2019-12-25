@@ -50,14 +50,14 @@ import org.slf4j.LoggerFactory;
  */
 @SuppressWarnings("serial")
 @Component(
-        service = Servlet.class,
-        immediate = true,
-        configurationPolicy = ConfigurationPolicy.OPTIONAL,
-        property = {
-            Constants.SERVICE_DESCRIPTION+"=This servlet exposes JaCoCo (http://www.eclemma.org/jacoco) code coverage data.",
-            "servlet.path=/system/sling/jacoco"
-        }
-    )
+    service = Servlet.class,
+    immediate = true,
+    configurationPolicy = ConfigurationPolicy.OPTIONAL,
+    property = {
+        Constants.SERVICE_DESCRIPTION+"=This servlet exposes JaCoCo (http://www.eclemma.org/jacoco) code coverage data.",
+        "servlet.path=/system/sling/jacoco"
+    }
+)
 @Designate(ocd = JacocoServlet.Config.class, factory = false)
 public class JacocoServlet extends HttpServlet {
     private static final String PARAM_SESSION_ID = ":sessionId";

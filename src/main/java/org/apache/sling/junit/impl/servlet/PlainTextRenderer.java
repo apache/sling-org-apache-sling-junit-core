@@ -34,9 +34,9 @@ import org.junit.runner.notification.Failure;
 import org.junit.runner.notification.RunListener;
 
 @Component(
-        service = PlainTextRenderer.class,
-        immediate = false,
-        scope = ServiceScope.BUNDLE
+    service = Renderer.class,
+    immediate = false,
+    scope = ServiceScope.BUNDLE
 )
 /** Plain text renderer */
 public class PlainTextRenderer extends RunListener implements Renderer, RendererFactory {

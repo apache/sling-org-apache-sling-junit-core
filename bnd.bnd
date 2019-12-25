@@ -1,0 +1,32 @@
+Bundle-Activator: \
+    ${classes;IMPLEMENTS;org.osgi.framework.BundleActivator}
+
+Require-Capability: osgi.ee;filter:="(&(osgi.ee=JavaSE)(version=1.6))"
+
+Export-Package:\
+    org.apache.sling.junit.annotations;version=1.1.0,\
+    org.apache.sling.junit;version=1.3.0,\
+    org.apache.sling.junit.rules;version=1.0.8
+
+-exportcontents:\
+    junit.framework;version=${junit.version},\
+    org.junit;version=${junit.version},\
+    org.junit.matchers.*;version=${junit.version},\
+    org.junit.rules.*;version=${junit.version},\
+    org.junit.runner.*;version=${junit.version},\
+    org.junit.runners.*;version=${junit.version},\
+    org.hamcrest;version=${hamcrest.version},\
+    org.hamcrest.*;version=${hamcrest.version}
+
+# bnd-maven-plugin use bndtools 4.2.0.  Macros for accessing repositories (ie. 
+# ${repo}, ${repos}, ${repodigest}, etc.) aren't available.  Use poor man 
+# approach to generate Apache Sling JUnit Core bundle embed-dependencies.
+repopath: ${subst;${settings.localRepository};\\\\;\\/}
+mavenJar: ${repopath}/${subst;${1};\\\.;/}/${2}/${3}/${2}-${3}.jar
+mavenJar2: ${repopath}/${subst;${1};\\\.;/}/${2}/${3}/${2}-${3}-${4}.jar
+
+-includeresource: \
+    lib/=${mavenJar;junit;junit;${junit.version}};lib:=true,\
+    lib/=${mavenJar;org.hamcrest;hamcrest-core;${hamcrest.version}};lib:=true,\
+    lib/=${mavenJar;org.hamcrest;hamcrest-library;${hamcrest.version}};lib:=true,\
+    @${mavenJar2;org.jacoco;org.jacoco.agent;${jacoco.version};runtime}!/org/jacoco/agent/rt/IAgent.class

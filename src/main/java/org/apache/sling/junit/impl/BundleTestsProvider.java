@@ -44,8 +44,11 @@ import org.slf4j.LoggerFactory;
  *  exported classes.
  */
 @Component(
-        service = BundleTestsProvider.class,
-        immediate = true
+    service = TestsProvider.class,
+    immediate = true,
+    property = {
+        Constants.SERVICE_PID+"=org.apache.sling.junit.impl.BundleTestsProvider",
+    }
 )
 public class BundleTestsProvider implements TestsProvider, BundleListener {
     private final Logger log = LoggerFactory.getLogger(getClass());
@@ -138,7 +141,7 @@ public class BundleTestsProvider implements TestsProvider, BundleListener {
             return;
         }
         synchronized (changedBundles) {
-            log.debug("Got BundleEvent for Bundle {}, will rebuild its lists of tests");
+            log.debug("Got BundleEvent for Bundle {}, will rebuild its lists of tests", b.getSymbolicName());
             changedBundles.add(b.getSymbolicName());
         }
         lastModified = System.currentTimeMillis();
