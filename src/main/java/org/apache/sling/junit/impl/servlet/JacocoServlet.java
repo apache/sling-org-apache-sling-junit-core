@@ -51,11 +51,7 @@ import org.slf4j.LoggerFactory;
 @SuppressWarnings("serial")
 @Component(
     service = Servlet.class,
-    immediate = true,
-    property = {
-        Constants.SERVICE_DESCRIPTION+"=This servlet exposes JaCoCo (http://www.eclemma.org/jacoco) code coverage data.",
-        "servlet.path=/system/sling/jacoco"
-    }
+    immediate = true
 )
 @Designate(ocd = JacocoServlet.Config.class, factory = false)
 public class JacocoServlet extends HttpServlet {

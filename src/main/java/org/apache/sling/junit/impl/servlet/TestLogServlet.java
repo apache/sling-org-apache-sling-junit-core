@@ -63,12 +63,7 @@ import ch.qos.logback.core.read.CyclicBufferAppender;
 
 @Component(
     service = Servlet.class,
-    immediate = true,
-    property = {
-        "servlet.path=/system/sling/testlog",
-        "log.buffer.size:Integer=1000",
-        "logPattern=%d{dd.MM.yyyy HH:mm:ss.SSS} *%level* [%thread] %logger %msg%n"
-    }
+    immediate = true
 )
 @Designate(ocd = TestLogServlet.Config.class, factory = false)
 public class TestLogServlet extends HttpServlet {
@@ -77,7 +72,7 @@ public class TestLogServlet extends HttpServlet {
 
     // Define OSGi R6 property configuration data type object
     @ObjectClassDefinition(
-            name = "Apache Sling Test Log Collector",
+            name = "Apache Sling JUnit Test Log Collector",
             description = "Servlet that exposes logs collected for a particular test execution"
     )
     @interface Config {

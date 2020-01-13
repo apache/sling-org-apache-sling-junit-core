@@ -46,11 +46,7 @@ import org.slf4j.LoggerFactory;
 @SuppressWarnings("serial")
 @Component(
     service = Servlet.class,
-    immediate = true,
-    property = {
-        Constants.SERVICE_DESCRIPTION+"=Service that gives access to JUnit test classes",
-        "servlet.path=/system/sling/junit",
-    }
+    immediate = true
 )
 @Designate(ocd = JUnitServlet.Config.class, factory = false)
 public class JUnitServlet extends HttpServlet {
