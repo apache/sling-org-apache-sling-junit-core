@@ -47,7 +47,6 @@ import org.slf4j.LoggerFactory;
 @Component(
     service = Servlet.class,
     immediate = true,
-    configurationPolicy = ConfigurationPolicy.OPTIONAL,
     property = {
         Constants.SERVICE_DESCRIPTION+"=Service that gives access to JUnit test classes",
         "servlet.path=/system/sling/junit",
@@ -102,6 +101,12 @@ public class JUnitServlet extends HttpServlet {
         }
     }
 
+    @Modified
+    protected void modified(final ComponentContext ctx, Config cfg) throws ServletException, NamespaceException {
+        deactivate(ctx);
+        activate(ctx, cfg);
+    }
+
     @Deactivate
     protected void deactivate(ComponentContext ctx) throws ServletException, NamespaceException {
         if(servletPath != null) {
@@ -123,6 +128,4 @@ public class JUnitServlet extends HttpServlet {
             throws ServletException, IOException {
         this.processor.doPost(req, resp);
     }
-
-
 }

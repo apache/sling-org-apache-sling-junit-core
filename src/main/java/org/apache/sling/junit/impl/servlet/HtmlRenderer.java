@@ -36,8 +36,7 @@ import org.osgi.service.component.annotations.ServiceScope;
 /** HTML renderer for JUnit servlet */
 @Component(
     service = Renderer.class,
-    immediate = false,
-    scope = ServiceScope.BUNDLE
+    immediate = false
 )
 public class HtmlRenderer extends RunListener implements Renderer,RendererFactory {
 

@@ -52,7 +52,6 @@ import org.slf4j.LoggerFactory;
 @Component(
     service = Servlet.class,
     immediate = true,
-    configurationPolicy = ConfigurationPolicy.OPTIONAL,
     property = {
         Constants.SERVICE_DESCRIPTION+"=This servlet exposes JaCoCo (http://www.eclemma.org/jacoco) code coverage data.",
         "servlet.path=/system/sling/jacoco"
@@ -121,6 +120,12 @@ public class JacocoServlet extends HttpServlet {
             httpService.registerServlet(servletPath, this, null, null);
             log.info("Servlet registered at {}", servletPath);
         }
+    }
+
+    @Modified
+    protected void modified(Config cfg) throws ServletException, NamespaceException {
+        deactivate(cfg);
+        activate(cfg);
     }
 
     @Deactivate

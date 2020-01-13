@@ -54,8 +54,7 @@ import org.w3c.dom.Text;
 /** XML renderer for JUnit servlet */
 @Component(
     service = Renderer.class,
-    immediate = false,
-    scope = ServiceScope.BUNDLE
+    immediate = false
 )
 public class XmlRenderer extends RunListener implements Renderer, RendererFactory {
     

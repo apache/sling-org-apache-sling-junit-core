@@ -35,8 +35,7 @@ import org.junit.runner.notification.RunListener;
 
 @Component(
     service = Renderer.class,
-    immediate = false,
-    scope = ServiceScope.BUNDLE
+    immediate = false
 )
 /** Plain text renderer */
 public class PlainTextRenderer extends RunListener implements Renderer, RendererFactory {

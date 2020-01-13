@@ -38,8 +38,7 @@ import org.slf4j.LoggerFactory;
  */
 @Component(
     service = Renderer.class,
-    immediate = false,
-    scope = ServiceScope.BUNDLE
+    immediate = false
 )
 public class JUnitResultRenderer extends RunListener implements Renderer,RendererFactory {
 

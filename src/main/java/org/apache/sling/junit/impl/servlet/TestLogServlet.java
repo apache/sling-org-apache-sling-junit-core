@@ -64,7 +64,6 @@ import ch.qos.logback.core.read.CyclicBufferAppender;
 @Component(
     service = Servlet.class,
     immediate = true,
-    configurationPolicy = ConfigurationPolicy.OPTIONAL,
     property = {
         "servlet.path=/system/sling/testlog",
         "log.buffer.size:Integer=1000",
@@ -135,12 +134,17 @@ public class TestLogServlet extends HttpServlet {
     private final Object appenderLock = new Object();
 
     @Activate
-    @Modified
     protected void activate(BundleContext ctx, Config cfg) throws Exception {
         registerServlet(cfg);
         registerAppender(cfg);
         registerFilter(ctx);
         createLayout(cfg);
+    }
+
+    @Modified
+    protected void modified(BundleContext ctx, Config cfg) throws Exception {
+        deactivate();
+        activate(ctx, cfg);
     }
 
     @Deactivate

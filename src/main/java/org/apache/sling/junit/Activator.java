@@ -18,11 +18,16 @@ package org.apache.sling.junit;
 
 import org.osgi.framework.BundleActivator;
 import org.osgi.framework.BundleContext;
+import org.osgi.framework.Constants;
 
 /** Used to make our BundleContext available to
  *  JUnit classes that need it but have no
  *  OSGi context.
  */
+@org.osgi.annotation.bundle.Header( 
+    name = Constants.BUNDLE_ACTIVATOR,
+    value = "${@class}"
+)
 public class Activator implements BundleActivator {
 
     private static BundleContext bundleContext;

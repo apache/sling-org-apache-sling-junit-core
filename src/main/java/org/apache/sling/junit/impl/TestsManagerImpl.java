@@ -128,7 +128,6 @@ public class TestsManagerImpl implements TestsManager {
     private Map<String, Long> lastModified = new HashMap<String, Long>();
     
     @Activate
-    @Modified
     protected void activate(ComponentContext ctx, Config cfg) {
         bundleContext = ctx.getBundleContext();
         tracker = new ServiceTracker<TestsProvider,TestsProvider>(bundleContext, TestsProvider.class.getName(), null);
@@ -141,6 +140,13 @@ public class TestsManagerImpl implements TestsManager {
         log.debug("System startup wait seconds: {}", waitSystemStartupSeconds);
         waitForSystemStartup = cfg.wait_for_system_startup();
         log.debug("Wait for system startup: {}", waitForSystemStartup);
+    }
+
+    @Modified
+    protected void modified(ComponentContext ctx, Config cfg) {
+        clearCaches();
+        deactivate(ctx);
+        activate(ctx, cfg);
     }
 
     @Deactivate

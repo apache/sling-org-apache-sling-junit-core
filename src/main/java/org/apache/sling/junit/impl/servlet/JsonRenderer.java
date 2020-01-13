@@ -42,8 +42,7 @@ import org.slf4j.LoggerFactory;
 /** Json renderer for JUnit servlet */
 @Component(
     service = Renderer.class,
-    immediate = false,
-    scope = ServiceScope.BUNDLE
+    immediate = false
 )
 public class JsonRenderer extends RunListener implements Renderer,RendererFactory {
 

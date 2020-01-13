@@ -41,7 +41,6 @@ public class AnnotationsProcessor implements TestObjectProcessor {
     private BundleContext bundleContext;
     
     @Activate
-    @Modified
     protected void activate(ComponentContext ctx) {
         bundleContext = ctx.getBundleContext();
         if(bundleContext == null) {

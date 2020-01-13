@@ -69,7 +69,6 @@ public class BundleTestsProvider implements TestsProvider, BundleListener {
     private final Map<String, List<String>> testClassesMap = new HashMap<String, List<String>>();
 
     @Activate
-    @Modified
     protected void activate(ComponentContext ctx) {
         bundleContext = ctx.getBundleContext();
         bundleContext.addBundleListener(this);

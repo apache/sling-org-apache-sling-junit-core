@@ -53,7 +53,6 @@ import org.osgi.service.http.NamespaceException;
 @Component(
     service = Servlet.class,
     immediate = true,
-    configurationPolicy = ConfigurationPolicy.OPTIONAL,
     property = {
         Constants.SERVICE_DESCRIPTION+"=Service that gives access to JUnit test classes",
         "sling.servlet.resourceTypes=sling/junit/testing",
@@ -107,6 +106,12 @@ public class SlingJUnitServlet extends HttpServlet {
                 + extension;
             }
         };
+    }
+
+    @Modified
+    protected void modified(final ComponentContext ctx) throws ServletException, NamespaceException {
+        deactivate(ctx);
+        activate(ctx);
     }
 
     @Deactivate
