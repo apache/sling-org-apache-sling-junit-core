@@ -57,6 +57,8 @@ public class TestsManagerImpl implements TestsManager {
     // before waiting for more bundles to become active should be aborted
     private static final int DEFAULT_SYSTEM_STARTUP_INACTIVITY_TIMEOUT_SECONDS = 10;
 
+    private static final int DEFAULT_SYSTEM_STARTUP_GLOBAL_TIMEOUT_SECONDS = 60;
+
     private static volatile boolean waitForSystemStartup = true;
 
     private ServiceTracker tracker;
@@ -244,9 +246,9 @@ public class TestsManagerImpl implements TestsManager {
             }
 
             // wait max inactivityTimeout after the last bundle became active before giving up
-            long inactivityTimeout = TimeUnit.SECONDS.toMillis(DEFAULT_SYSTEM_STARTUP_INACTIVITY_TIMEOUT_SECONDS);
             long lastChange = System.currentTimeMillis();
-            while (!bundlesToWaitFor.isEmpty() || (lastChange + inactivityTimeout < System.currentTimeMillis())) {
+            long globalTimeout = lastChange + TimeUnit.SECONDS.toMillis(DEFAULT_SYSTEM_STARTUP_GLOBAL_TIMEOUT_SECONDS);
+            while (isWaitNeeded(globalTimeout, lastChange, bundlesToWaitFor)) {
                 log.info("Waiting for the following bundles to start: {}", bundlesToWaitFor);
                 try {
                     TimeUnit.SECONDS.sleep(1);
@@ -271,6 +273,13 @@ public class TestsManagerImpl implements TestsManager {
                 log.info("All bundles are active, starting to run tests.");
             }
         }
+    }
+
+    private static boolean isWaitNeeded(final long globalTimeout, final long lastChange, final Set<Bundle> bundlesToWaitFor) {
+        long inactivityTimeout = TimeUnit.SECONDS.toMillis(DEFAULT_SYSTEM_STARTUP_INACTIVITY_TIMEOUT_SECONDS);
+        boolean canLoop = !bundlesToWaitFor.isEmpty() || (lastChange + inactivityTimeout < System.currentTimeMillis());
+        boolean notGloballyTimeout = globalTimeout < System.currentTimeMillis();
+        return notGloballyTimeout && canLoop;
     }
 
     private static boolean isFragment(final Bundle bundle) {
