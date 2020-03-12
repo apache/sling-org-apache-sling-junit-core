@@ -57,6 +57,7 @@ public class TestsManagerImpl implements TestsManager {
     // before waiting for more bundles to become active should be aborted
     private static final int DEFAULT_SYSTEM_STARTUP_INACTIVITY_TIMEOUT_SECONDS = 10;
 
+    // Global Timeout up to which it stop waiting for bundles to be all active.
     private static final int DEFAULT_SYSTEM_STARTUP_GLOBAL_TIMEOUT_SECONDS = 60;
 
     private static volatile boolean waitForSystemStartup = true;
