@@ -28,7 +28,7 @@
     </parent>
 
     <artifactId>org.apache.sling.junit.core</artifactId>
-    <version>1.0.27-SNAPSHOT</version>
+    <version>1.0.27_B001-SNAPSHOT</version>
     <packaging>bundle</packaging>
 
     <name>Apache Sling JUnit Core</name>
@@ -160,7 +160,7 @@
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
-            <version>1.5.11</version>
+            <version>1.7.30</version>
             <scope>provided</scope>
         </dependency>
         <dependency>
@@ -173,7 +173,7 @@
         <dependency>
             <groupId>ch.qos.logback</groupId>
             <artifactId>logback-classic</artifactId>
-            <version>1.0.13</version>
+            <version>1.2.3</version>
             <scope>provided</scope>
             <optional>true</optional>
         </dependency>
@@ -202,6 +202,18 @@
             <artifactId>hamcrest-library</artifactId>
             <version>${hamcrest.version}</version>
             <scope>compile</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.powermock</groupId>
+            <artifactId>powermock-module-junit4</artifactId>
+            <version>2.0.5</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.powermock</groupId>
+            <artifactId>powermock-api-mockito2</artifactId>
+            <version>2.0.5</version>
+            <scope>test</scope>
         </dependency>
     </dependencies>
 </project>
