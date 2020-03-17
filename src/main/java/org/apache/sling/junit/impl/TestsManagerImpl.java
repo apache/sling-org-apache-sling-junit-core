@@ -53,11 +53,14 @@ public class TestsManagerImpl implements TestsManager {
 
     private static final Logger log = LoggerFactory.getLogger(TestsManagerImpl.class);
 
-    // the inactivity timeout is the maximum time after the last bundle became active
-    // before waiting for more bundles to become active should be aborted
-    private static final int DEFAULT_SYSTEM_STARTUP_INACTIVITY_TIMEOUT_SECONDS = 10;
+    // Global Timeout up to which it stop waiting for bundles to be all active, default to 40 seconds.
+    public static final String PROPERTY_SYSTEM_STARTUP_GLOBAL_TIMEOUT_SECONDS = "sling.junit.core.system_startup_global_timeout";
+
+    private static volatile int globalTimeoutSeconds = Integer.parseInt(System.getProperty(PROPERTY_SYSTEM_STARTUP_GLOBAL_TIMEOUT_SECONDS, "40"));
 
     private static volatile boolean waitForSystemStartup = true;
+
+    private static volatile long timeWaitForSystemStartup = 0;
 
     private ServiceTracker tracker;
 
@@ -66,7 +69,7 @@ public class TestsManagerImpl implements TestsManager {
     private BundleContext bundleContext;
     
     // List of providers
-    private List<TestsProvider> providers = new ArrayList<TestsProvider>();
+    private final List<TestsProvider> providers = new ArrayList<TestsProvider>();
     
     // Map of test names to their provider's PID
     private Map<String, String> tests = new ConcurrentHashMap<String, String>();
@@ -126,7 +129,7 @@ public class TestsManagerImpl implements TestsManager {
         boolean reload = false;
         for(TestsProvider p : providers) {
             final Long lastMod = lastModified.get(p.getServicePid());
-            if(lastMod == null || lastMod.longValue() != p.lastModified()) {
+            if(lastMod == null || lastMod != p.lastModified()) {
                 reload = true;
                 log.debug("{} updated, will reload test names from all providers", p);
                 break;
@@ -141,7 +144,7 @@ public class TestsManagerImpl implements TestsManager {
                     log.warn("{} has null PID, ignored", p);
                     continue;
                 }
-                lastModified.put(pid, new Long(p.lastModified()));
+                lastModified.put(pid, p.lastModified());
                 final List<String> names = p.getTestNames(); 
                 for(String name : names) {
                     tests.put(name, pid);
@@ -162,7 +165,7 @@ public class TestsManagerImpl implements TestsManager {
                     result.add(test);
                 }
             }
-            log.debug("{} selected {} tests out of {}", new Object[] { selector, result.size(), allTests.size() });
+            log.debug("{} selected {} tests out of {}", selector, result.size(), allTests.size());
             return result;
         }
     }
@@ -222,7 +225,7 @@ public class TestsManagerImpl implements TestsManager {
         }
     }
 
-    public void listTests(Collection<String> testNames, Renderer renderer) throws Exception {
+    public void listTests(Collection<String> testNames, Renderer renderer) {
         renderer.title(2, "Test classes");
         final String note = "The test set can be restricted using partial test names"
                 + " as a suffix to this URL"
@@ -244,9 +247,9 @@ public class TestsManagerImpl implements TestsManager {
             }
 
             // wait max inactivityTimeout after the last bundle became active before giving up
-            long inactivityTimeout = TimeUnit.SECONDS.toMillis(DEFAULT_SYSTEM_STARTUP_INACTIVITY_TIMEOUT_SECONDS);
-            long lastChange = System.currentTimeMillis();
-            while (!bundlesToWaitFor.isEmpty() || (lastChange + inactivityTimeout < System.currentTimeMillis())) {
+            long startTime = System.currentTimeMillis();
+            long globalTimeout = startTime + TimeUnit.SECONDS.toMillis(globalTimeoutSeconds);
+            while (isWaitNeeded(globalTimeout, bundlesToWaitFor)) {
                 log.info("Waiting for the following bundles to start: {}", bundlesToWaitFor);
                 try {
                     TimeUnit.SECONDS.sleep(1);
@@ -259,18 +262,25 @@ public class TestsManagerImpl implements TestsManager {
                     if (bundle.getState() == Bundle.ACTIVE) {
                         bundles.remove();
                         log.debug("Bundle {} has become active", bundle.getSymbolicName());
-                        lastChange = System.currentTimeMillis();
                     }
                 }
             }
 
+            timeWaitForSystemStartup = System.currentTimeMillis() - startTime;
+
             if (!bundlesToWaitFor.isEmpty()) {
-                log.warn("Waited {} seconds but the following bundles are not yet started: {}",
-                        DEFAULT_SYSTEM_STARTUP_INACTIVITY_TIMEOUT_SECONDS, bundlesToWaitFor);
+                log.warn("Waited {} milliseconds but the following bundles are not yet started: {}",
+                    timeWaitForSystemStartup, bundlesToWaitFor);
             } else {
                 log.info("All bundles are active, starting to run tests.");
             }
         }
+    }
+
+    private static boolean isWaitNeeded(final long globalTimeout, final Set<Bundle> bundlesToWaitFor) {
+        long currentTime = System.currentTimeMillis();
+        boolean globallyTimeout = globalTimeout < currentTime;
+        return !globallyTimeout && !bundlesToWaitFor.isEmpty();
     }
 
     private static boolean isFragment(final Bundle bundle) {
