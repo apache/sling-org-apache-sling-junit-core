@@ -53,14 +53,8 @@ public class TestsManagerImpl implements TestsManager {
 
     private static final Logger log = LoggerFactory.getLogger(TestsManagerImpl.class);
 
-    // the inactivity timeout is the maximum time after the last bundle became active
-    // before waiting for more bundles to become active should be aborted
-    public static final String PROPERTY_SYSTEM_STARTUP_INACTIVITY_TIMEOUT_SECONDS = "sling.junit.core.system_startup_inactive_timeout";
-
-    // Global Timeout up to which it stop waiting for bundles to be all active.
+    // Global Timeout up to which it stop waiting for bundles to be all active, default to 40 seconds.
     public static final String PROPERTY_SYSTEM_STARTUP_GLOBAL_TIMEOUT_SECONDS = "sling.junit.core.system_startup_global_timeout";
-
-    private static volatile int inactivityTimeoutSeconds = Integer.parseInt(System.getProperty(PROPERTY_SYSTEM_STARTUP_INACTIVITY_TIMEOUT_SECONDS, "10"));
 
     private static volatile int globalTimeoutSeconds = Integer.parseInt(System.getProperty(PROPERTY_SYSTEM_STARTUP_GLOBAL_TIMEOUT_SECONDS, "40"));
 
@@ -253,12 +247,9 @@ public class TestsManagerImpl implements TestsManager {
             }
 
             // wait max inactivityTimeout after the last bundle became active before giving up
-            long lastChange = System.currentTimeMillis();
-            long globalTimeout = lastChange + TimeUnit.SECONDS.toMillis(globalTimeoutSeconds);
-
             long startTime = System.currentTimeMillis();
-            
-            while (isWaitNeeded(globalTimeout, lastChange, bundlesToWaitFor)) {
+            long globalTimeout = startTime + TimeUnit.SECONDS.toMillis(globalTimeoutSeconds);
+            while (isWaitNeeded(globalTimeout, bundlesToWaitFor)) {
                 log.info("Waiting for the following bundles to start: {}", bundlesToWaitFor);
                 try {
                     TimeUnit.SECONDS.sleep(1);
@@ -271,7 +262,6 @@ public class TestsManagerImpl implements TestsManager {
                     if (bundle.getState() == Bundle.ACTIVE) {
                         bundles.remove();
                         log.debug("Bundle {} has become active", bundle.getSymbolicName());
-                        lastChange = System.currentTimeMillis();
                     }
                 }
             }
@@ -287,13 +277,10 @@ public class TestsManagerImpl implements TestsManager {
         }
     }
 
-    private static boolean isWaitNeeded(final long globalTimeout, final long lastChange, final Set<Bundle> bundlesToWaitFor) {
-        long inactivityTimeout = TimeUnit.SECONDS.toMillis(inactivityTimeoutSeconds);
+    private static boolean isWaitNeeded(final long globalTimeout, final Set<Bundle> bundlesToWaitFor) {
         long currentTime = System.currentTimeMillis();
-        boolean isInactive = lastChange + inactivityTimeout < currentTime;
-        boolean canLoop = !bundlesToWaitFor.isEmpty() || !isInactive;
-        boolean notGloballyTimeout = globalTimeout > currentTime;
-        return notGloballyTimeout && canLoop;
+        boolean globallyTimeout = globalTimeout < currentTime;
+        return !globallyTimeout && !bundlesToWaitFor.isEmpty();
     }
 
     private static boolean isFragment(final Bundle bundle) {

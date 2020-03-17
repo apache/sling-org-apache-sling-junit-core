@@ -46,7 +46,6 @@ public class TestsManagerImplTest {
 
   static {
     // Set the system properties for this test as the default would wait longer.
-    System.setProperty(TestsManagerImpl.PROPERTY_SYSTEM_STARTUP_INACTIVITY_TIMEOUT_SECONDS, "1");
     System.setProperty(TestsManagerImpl.PROPERTY_SYSTEM_STARTUP_GLOBAL_TIMEOUT_SECONDS, "2");
   }
 
@@ -54,40 +53,12 @@ public class TestsManagerImplTest {
    * case if isWaitNeeded should return true, mainly it still have some bundles in the list to wait, and global timeout didn't pass.
    */
   @Test
-  public void isWaitNeededPositiveForNotInactiveNotEmptyList() throws Exception {
+  public void isWaitNeededPositiveNotEmptyListNotGloballyTimeout() throws Exception {
     final TestsManagerImpl testsManager = new TestsManagerImpl();
-    long lastChange = System.currentTimeMillis();
-    long globalTimeout = lastChange + TimeUnit.SECONDS.toMillis(10);
+    long globalTimeout = System.currentTimeMillis() + TimeUnit.SECONDS.toMillis(10);
     final Set<Bundle> bundlesToWaitFor = new HashSet<Bundle>();
     bundlesToWaitFor.add(Mockito.mock(Bundle.class));
-    boolean isWaitNeeded = Whitebox.invokeMethod(TestsManagerImpl.class, "isWaitNeeded", globalTimeout, lastChange, bundlesToWaitFor);
-    assertTrue(isWaitNeeded);
-  }
-
-  /**
-   * case if isWaitNeeded should return false, when for example there is no more bundles in the list.
-   */
-  @Test
-  public void isWaitNeededPositiveForEmptyListOnly() throws Exception {
-    final TestsManagerImpl testsManager = new TestsManagerImpl();
-    long lastChange = System.currentTimeMillis();
-    long globalTimeout = lastChange + TimeUnit.SECONDS.toMillis(10);
-    final Set<Bundle> bundlesToWaitFor = new HashSet<Bundle>();
-    boolean isWaitNeeded = Whitebox.invokeMethod(TestsManagerImpl.class, "isWaitNeeded", globalTimeout, lastChange, bundlesToWaitFor);
-    assertTrue(isWaitNeeded);
-  }
-
-  /**
-   * case if isWaitNeeded should return false, when for example there is no more bundles in the list.
-   */
-  @Test
-  public void isWaitNeededPositiveForInactivityTimeoutOnly() throws Exception {
-    final TestsManagerImpl testsManager = new TestsManagerImpl();
-    long lastChange = System.currentTimeMillis() - TimeUnit.SECONDS.toMillis(3);
-    long globalTimeout = lastChange + TimeUnit.SECONDS.toMillis(10);
-    final Set<Bundle> bundlesToWaitFor = new HashSet<Bundle>();
-    bundlesToWaitFor.add(Mockito.mock(Bundle.class));
-    boolean isWaitNeeded = Whitebox.invokeMethod(TestsManagerImpl.class, "isWaitNeeded", globalTimeout, lastChange, bundlesToWaitFor);
+    boolean isWaitNeeded = Whitebox.invokeMethod(TestsManagerImpl.class, "isWaitNeeded", globalTimeout, bundlesToWaitFor);
     assertTrue(isWaitNeeded);
   }
 
@@ -100,7 +71,7 @@ public class TestsManagerImplTest {
     long lastChange = System.currentTimeMillis() - TimeUnit.SECONDS.toMillis(1);
     long globalTimeout = lastChange - TimeUnit.SECONDS.toMillis(1);
     final Set<Bundle> bundlesToWaitFor = new HashSet<Bundle>();
-    boolean isWaitNeeded = Whitebox.invokeMethod(TestsManagerImpl.class, "isWaitNeeded", globalTimeout, lastChange, bundlesToWaitFor);
+    boolean isWaitNeeded = Whitebox.invokeMethod(TestsManagerImpl.class, "isWaitNeeded", globalTimeout, bundlesToWaitFor);
     assertFalse(isWaitNeeded);
   }
 
@@ -108,13 +79,13 @@ public class TestsManagerImplTest {
    * case if isWaitNeeded should return false, when for example it reached the global timeout limit.
    */
   @Test
-  public void isWaitNeededNegativeForEmptyListInactiveTimeout() throws Exception {
+  public void isWaitNeededNegativeForEmptyList() throws Exception {
     final TestsManagerImpl testsManager = new TestsManagerImpl();
     long lastChange = System.currentTimeMillis() - TimeUnit.SECONDS.toMillis(1);
     long globalTimeout = lastChange + TimeUnit.SECONDS.toMillis(10);
     final Set<Bundle> bundlesToWaitFor = new HashSet<Bundle>();
-    boolean isWaitNeeded = Whitebox.invokeMethod(TestsManagerImpl.class, "isWaitNeeded", globalTimeout, lastChange, bundlesToWaitFor);
-    assertTrue(isWaitNeeded);
+    boolean isWaitNeeded = Whitebox.invokeMethod(TestsManagerImpl.class, "isWaitNeeded", globalTimeout, bundlesToWaitFor);
+    assertFalse(isWaitNeeded);
   }
 
   @Test
