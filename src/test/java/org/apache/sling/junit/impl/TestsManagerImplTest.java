@@ -21,7 +21,6 @@ import static junit.framework.TestCase.assertTrue;
 import static org.powermock.api.mockito.PowerMockito.mock;
 import static org.powermock.api.mockito.PowerMockito.when;
 
-import java.util.Dictionary;
 import java.util.HashSet;
 import java.util.Hashtable;
 import java.util.Set;
@@ -44,66 +43,59 @@ import org.powermock.reflect.Whitebox;
 @PrepareForTest({ Activator.class, TestsManagerImpl.class })
 public class TestsManagerImplTest {
 
+  private static final String WAIT_METHOD_NAME = "needToWait";
+  private static final int SYSTEM_STARTUP_SECONDS = 2;
+
   static {
-    // Set the system properties for this test as the default would wait longer.
-    System.setProperty(TestsManagerImpl.PROPERTY_SYSTEM_STARTUP_GLOBAL_TIMEOUT_SECONDS, "2");
+    // Set a short timeout so our tests can run faster
+    System.setProperty("sling.junit.core.SystemStartupTimeoutSeconds", String.valueOf(SYSTEM_STARTUP_SECONDS));
   }
 
   /**
-   * case if isWaitNeeded should return true, mainly it still have some bundles in the list to wait, and global timeout didn't pass.
+   * case if needToWait should return true, mainly it still have some bundles in the list to wait, and global timeout didn't pass.
    */
   @Test
-  public void isWaitNeededPositiveNotEmptyListNotGloballyTimeout() throws Exception {
-    final TestsManagerImpl testsManager = new TestsManagerImpl();
-    long globalTimeout = System.currentTimeMillis() + TimeUnit.SECONDS.toMillis(10);
+  public void needToWaitPositiveNotEmptyListNotGloballyTimeout() throws Exception {
+    long startupTimeout = System.currentTimeMillis() + TimeUnit.SECONDS.toMillis(5 * SYSTEM_STARTUP_SECONDS);
     final Set<Bundle> bundlesToWaitFor = new HashSet<Bundle>();
     bundlesToWaitFor.add(Mockito.mock(Bundle.class));
-    boolean isWaitNeeded = Whitebox.invokeMethod(TestsManagerImpl.class, "isWaitNeeded", globalTimeout, bundlesToWaitFor);
-    assertTrue(isWaitNeeded);
+    assertTrue((Boolean)Whitebox.invokeMethod(TestsManagerImpl.class, WAIT_METHOD_NAME, startupTimeout, bundlesToWaitFor));
   }
 
   /**
-   * case if isWaitNeeded should return false, when for example it reached the global timeout limit.
+   * case if needToWait should return false, when for example it reached the global timeout limit.
    */
   @Test
-  public void isWaitNeededNegativeForGlobalTimeout() throws Exception {
-    final TestsManagerImpl testsManager = new TestsManagerImpl();
-    long lastChange = System.currentTimeMillis() - TimeUnit.SECONDS.toMillis(1);
-    long globalTimeout = lastChange - TimeUnit.SECONDS.toMillis(1);
-    final Set<Bundle> bundlesToWaitFor = new HashSet<Bundle>();
-    boolean isWaitNeeded = Whitebox.invokeMethod(TestsManagerImpl.class, "isWaitNeeded", globalTimeout, bundlesToWaitFor);
-    assertFalse(isWaitNeeded);
+  public void needToWaitNegativeForstartupTimeout() throws Exception {
+    long lastChange = System.currentTimeMillis() - TimeUnit.SECONDS.toMillis(SYSTEM_STARTUP_SECONDS / 2);
+    long startupTimeout = lastChange - TimeUnit.SECONDS.toMillis(1);
+    assertFalse((Boolean)Whitebox.invokeMethod(TestsManagerImpl.class, WAIT_METHOD_NAME, startupTimeout, new HashSet<Bundle>()));
   }
 
   /**
-   * case if isWaitNeeded should return false, when for example it reached the global timeout limit.
+   * case if needToWait should return false, when for example it reached the global timeout limit.
    */
   @Test
-  public void isWaitNeededNegativeForEmptyList() throws Exception {
-    final TestsManagerImpl testsManager = new TestsManagerImpl();
-    long lastChange = System.currentTimeMillis() - TimeUnit.SECONDS.toMillis(1);
-    long globalTimeout = lastChange + TimeUnit.SECONDS.toMillis(10);
-    final Set<Bundle> bundlesToWaitFor = new HashSet<Bundle>();
-    boolean isWaitNeeded = Whitebox.invokeMethod(TestsManagerImpl.class, "isWaitNeeded", globalTimeout, bundlesToWaitFor);
-    assertFalse(isWaitNeeded);
+  public void needToWaitNegativeForEmptyList() throws Exception {
+    long lastChange = System.currentTimeMillis() - TimeUnit.SECONDS.toMillis(SYSTEM_STARTUP_SECONDS / 2);
+    long startupTimeout = lastChange + TimeUnit.SECONDS.toMillis(10);
+    assertFalse((Boolean)Whitebox.invokeMethod(TestsManagerImpl.class, WAIT_METHOD_NAME, startupTimeout, new HashSet<Bundle>()));
   }
 
   @Test
   public void waitForSystemStartupTimeout() {
     setupBundleContextMock(Bundle.INSTALLED);
-    TestsManagerImpl.waitForSystemStartup();
-    long timeWaitForSystemStartup = Whitebox.getInternalState(TestsManagerImpl.class, "timeWaitForSystemStartup");
-    assertTrue(timeWaitForSystemStartup > TimeUnit.SECONDS.toMillis(2));
-    assertTrue(timeWaitForSystemStartup < TimeUnit.SECONDS.toMillis(3));
+    final long elapsed = TestsManagerImpl.waitForSystemStartup();
+    assertTrue(elapsed > TimeUnit.SECONDS.toMillis(SYSTEM_STARTUP_SECONDS));
+    assertTrue(elapsed < TimeUnit.SECONDS.toMillis(SYSTEM_STARTUP_SECONDS + 1));
     assertFalse((Boolean) Whitebox.getInternalState(TestsManagerImpl.class, "waitForSystemStartup"));
   }
 
   @Test
   public void waitForSystemStartupAllActiveBundles() {
     setupBundleContextMock(Bundle.ACTIVE);
-    TestsManagerImpl.waitForSystemStartup();
-    long timeWaitForSystemStartup = Whitebox.getInternalState(TestsManagerImpl.class, "timeWaitForSystemStartup");
-    assertTrue(timeWaitForSystemStartup < TimeUnit.SECONDS.toMillis(2));
+    final long elapsed = TestsManagerImpl.waitForSystemStartup();
+    assertTrue(elapsed < TimeUnit.SECONDS.toMillis(SYSTEM_STARTUP_SECONDS));
     assertFalse((Boolean) Whitebox.getInternalState(TestsManagerImpl.class, "waitForSystemStartup"));
   }
 

@@ -27,6 +27,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
+import java.util.function.LongUnaryOperator;
 
 import org.apache.felix.scr.annotations.Component;
 import org.apache.felix.scr.annotations.Service;
@@ -54,13 +55,11 @@ public class TestsManagerImpl implements TestsManager {
     private static final Logger log = LoggerFactory.getLogger(TestsManagerImpl.class);
 
     // Global Timeout up to which it stop waiting for bundles to be all active, default to 40 seconds.
-    public static final String PROPERTY_SYSTEM_STARTUP_GLOBAL_TIMEOUT_SECONDS = "sling.junit.core.system_startup_global_timeout";
+    public static final String PROP_STARTUP_TIMEOUT_SECONDS = "sling.junit.core.SystemStartupTimeoutSeconds";
 
-    private static volatile int globalTimeoutSeconds = Integer.parseInt(System.getProperty(PROPERTY_SYSTEM_STARTUP_GLOBAL_TIMEOUT_SECONDS, "40"));
+    private static volatile int startupTimeoutSeconds = Integer.parseInt(System.getProperty(PROP_STARTUP_TIMEOUT_SECONDS, "40"));
 
     private static volatile boolean waitForSystemStartup = true;
-
-    private static volatile long timeWaitForSystemStartup = 0;
 
     private ServiceTracker tracker;
 
@@ -235,7 +234,11 @@ public class TestsManagerImpl implements TestsManager {
     }
 
 
-    public static void waitForSystemStartup() {
+    /** Wait for all bundles to be started
+     *  @return number of msec taken by this method to execute
+    */
+    public static long waitForSystemStartup() {
+        long elapsedMsec = -1;
         if (waitForSystemStartup) {
             waitForSystemStartup = false;
             final BundleContext bundleContext = Activator.getBundleContext();
@@ -247,10 +250,10 @@ public class TestsManagerImpl implements TestsManager {
             }
 
             // wait max inactivityTimeout after the last bundle became active before giving up
-            long startTime = System.currentTimeMillis();
-            long globalTimeout = startTime + TimeUnit.SECONDS.toMillis(globalTimeoutSeconds);
-            while (isWaitNeeded(globalTimeout, bundlesToWaitFor)) {
-                log.info("Waiting for the following bundles to start: {}", bundlesToWaitFor);
+            final long startTime = System.currentTimeMillis();
+            final long startupTimeout = startTime + TimeUnit.SECONDS.toMillis(startupTimeoutSeconds);
+            while (needToWait(startupTimeout, bundlesToWaitFor)) {
+                log.info("Waiting for bundles to start: {}", bundlesToWaitFor);
                 try {
                     TimeUnit.SECONDS.sleep(1);
                 } catch (InterruptedException e) {
@@ -261,26 +264,27 @@ public class TestsManagerImpl implements TestsManager {
                     Bundle bundle = bundles.next();
                     if (bundle.getState() == Bundle.ACTIVE) {
                         bundles.remove();
-                        log.debug("Bundle {} has become active", bundle.getSymbolicName());
+                        log.debug("Bundle {} is now active", bundle.getSymbolicName());
                     }
                 }
             }
 
-            timeWaitForSystemStartup = System.currentTimeMillis() - startTime;
+            elapsedMsec = System.currentTimeMillis() - startTime;
 
             if (!bundlesToWaitFor.isEmpty()) {
                 log.warn("Waited {} milliseconds but the following bundles are not yet started: {}",
-                    timeWaitForSystemStartup, bundlesToWaitFor);
+                    elapsedMsec, bundlesToWaitFor);
             } else {
                 log.info("All bundles are active, starting to run tests.");
             }
+
         }
+
+        return elapsedMsec;
     }
 
-    private static boolean isWaitNeeded(final long globalTimeout, final Set<Bundle> bundlesToWaitFor) {
-        long currentTime = System.currentTimeMillis();
-        boolean globallyTimeout = globalTimeout < currentTime;
-        return !globallyTimeout && !bundlesToWaitFor.isEmpty();
+    private static boolean needToWait(final long startupTimeout, final Collection<Bundle> bundlesToWaitFor) {
+        return startupTimeout > System.currentTimeMillis() && !bundlesToWaitFor.isEmpty();
     }
 
     private static boolean isFragment(final Bundle bundle) {
