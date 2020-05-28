@@ -32,7 +32,6 @@ import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.BundleEvent;
 import org.osgi.framework.BundleListener;
-import org.osgi.framework.Constants;
 import org.osgi.service.component.ComponentContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,9 +44,10 @@ import org.slf4j.LoggerFactory;
 @Service
 public class BundleTestsProvider implements TestsProvider, BundleListener {
     private final Logger log = LoggerFactory.getLogger(getClass());
+private static final String COMPONENT_NAME = "component.name";
     private long lastModified;
     private BundleContext bundleContext;
-    private String pid;
+    private String componentName;
     
     public static final String SLING_TEST_REGEXP = "Sling-Test-Regexp";
     
@@ -74,7 +74,7 @@ public class BundleTestsProvider implements TestsProvider, BundleListener {
         }
         
         lastModified = System.currentTimeMillis();
-        pid = (String)ctx.getProperties().get(Constants.SERVICE_PID);
+        componentName = (String)ctx.getProperties().get(COMPONENT_NAME);
     }
     
     protected void deactivate(ComponentContext ctx) {
@@ -85,7 +85,7 @@ public class BundleTestsProvider implements TestsProvider, BundleListener {
     
     @Override
     public String toString() {
-        return getClass().getSimpleName() + ", pid=" + pid;
+        return getClass().getSimpleName() + ", componentName(pid)=" + componentName;
     }
 
     /** Update testClasses if bundle changes require it */
@@ -217,7 +217,7 @@ public class BundleTestsProvider implements TestsProvider, BundleListener {
     }
 
     public String getServicePid() {
-        return pid;
+        return componentName;
     }
 
     public List<String> getTestNames() {
