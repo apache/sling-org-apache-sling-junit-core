@@ -73,6 +73,8 @@
                             org.junit.rules.*;version=${junit.version},
                             org.junit.runner.*;version=${junit.version},
                             org.junit.runners.*;version=${junit.version},
+                            org.junit.experimental.categories.*;version=${junit.version},
+                            org.junit.validator.*;version=${junit.version},
                             org.hamcrest;version=${hamcrest.version},
                             org.hamcrest.*;version=${hamcrest.version}
                         </_exportcontents>
