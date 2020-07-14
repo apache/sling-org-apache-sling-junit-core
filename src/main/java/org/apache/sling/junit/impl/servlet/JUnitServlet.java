@@ -24,12 +24,13 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import org.apache.felix.scr.annotations.Component;
-import org.apache.felix.scr.annotations.Property;
-import org.apache.felix.scr.annotations.Reference;
 import org.apache.sling.junit.RendererSelector;
 import org.apache.sling.junit.TestsManager;
 import org.osgi.service.component.ComponentContext;
+import org.osgi.service.component.annotations.Activate;
+import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.annotations.Deactivate;
+import org.osgi.service.component.annotations.Reference;
 import org.osgi.service.http.HttpService;
 import org.osgi.service.http.NamespaceException;
 import org.slf4j.Logger;
@@ -37,13 +38,17 @@ import org.slf4j.LoggerFactory;
 
 /** Simple test runner servlet */
 @SuppressWarnings("serial")
-@Component(immediate=true, metatype=true)
+@Component(
+        immediate=true,
+        property = {
+                JacocoServlet.SERVLET_PATH_NAME + "=/system/sling/junit"
+        }
+)
 public class JUnitServlet extends HttpServlet {
 
     private final Logger log = LoggerFactory.getLogger(getClass());
 
-    @Property(value="/system/sling/junit")
-    static final String SERVLET_PATH_NAME = "servlet.path";
+    public static final String SERVLET_PATH_NAME = "servlet.path";
 
     /** Non-null if we are registered with HttpService */
     private String servletPath;
@@ -59,6 +64,7 @@ public class JUnitServlet extends HttpServlet {
 
     private volatile ServletProcessor processor;
 
+    @Activate
     protected void activate(final ComponentContext ctx) throws ServletException, NamespaceException {
         servletPath = getServletPath(ctx);
         if(servletPath == null) {
@@ -82,7 +88,8 @@ public class JUnitServlet extends HttpServlet {
         return result;
     }
 
-    protected void deactivate(ComponentContext ctx) throws ServletException, NamespaceException {
+    @Deactivate
+    protected void deactivate(ComponentContext ctx) {
         if(servletPath != null) {
             httpService.unregister(servletPath);
             log.info("Servlet unregistered from path {}", servletPath);

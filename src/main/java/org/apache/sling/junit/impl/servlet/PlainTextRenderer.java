@@ -23,8 +23,6 @@ import java.util.Collection;
 
 import javax.servlet.http.HttpServletResponse;
 
-import org.apache.felix.scr.annotations.Component;
-import org.apache.felix.scr.annotations.Service;
 import org.apache.sling.junit.Renderer;
 import org.apache.sling.junit.RendererFactory;
 import org.apache.sling.junit.TestSelector;
@@ -32,9 +30,9 @@ import org.junit.runner.Description;
 import org.junit.runner.Result;
 import org.junit.runner.notification.Failure;
 import org.junit.runner.notification.RunListener;
+import org.osgi.service.component.annotations.Component;
 
-@Component(immediate=false)
-@Service
+@Component
 /** Plain text renderer */
 public class PlainTextRenderer extends RunListener implements Renderer, RendererFactory {
     public static final String EXTENSION = "txt";

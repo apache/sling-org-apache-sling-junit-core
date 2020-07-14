@@ -18,11 +18,22 @@ package org.apache.sling.junit;
 
 import java.util.Collection;
 
-/** Provides a Renderer to execute tests */
+/**
+ * Provides a Renderer to execute tests
+ */
 public interface RendererSelector {
-    /** Return all available Renderers */
+    /**
+     * Return all available Renderers
+     *
+     * @return the renderers collection
+     */
     Collection<Renderer> getRenderers();
-    
-    /** Select a Renderer for supplied TestSelector */
+
+    /**
+     * Select a Renderer for supplied TestSelector.
+     *
+     * @param selector a test selector
+     * @return a renderer for the supplied test selector
+     */
     Renderer getRenderer(TestSelector selector);
 }

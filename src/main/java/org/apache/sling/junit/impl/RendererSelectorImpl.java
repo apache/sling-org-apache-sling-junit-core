@@ -21,10 +21,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
-import javax.servlet.ServletException;
-
-import org.apache.felix.scr.annotations.Component;
-import org.apache.felix.scr.annotations.Service;
 import org.apache.sling.junit.Renderer;
 import org.apache.sling.junit.RendererFactory;
 import org.apache.sling.junit.RendererSelector;
@@ -32,14 +28,15 @@ import org.apache.sling.junit.TestSelector;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.ServiceReference;
 import org.osgi.service.component.ComponentContext;
-import org.osgi.service.http.NamespaceException;
+import org.osgi.service.component.annotations.Activate;
+import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.annotations.Deactivate;
 import org.osgi.util.tracker.ServiceTracker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /** Default RendererSelector */
-@Component(immediate=false)
-@Service
+@Component
 public class RendererSelectorImpl implements RendererSelector {
     private final Logger log = LoggerFactory.getLogger(getClass());
     private final List<Renderer> renderers = new ArrayList<Renderer>();
@@ -78,14 +75,16 @@ public class RendererSelectorImpl implements RendererSelector {
         
         return null;
     }
-    
-    protected void activate(ComponentContext ctx) throws ServletException, NamespaceException {
+
+    @Activate
+    protected void activate(ComponentContext ctx) {
         bundleContext = ctx.getBundleContext();
         renderersTracker = new ServiceTracker(ctx.getBundleContext(), Renderer.class.getName(), null);
         renderersTracker.open();
     }
     
-    protected void deactivate(ComponentContext ctx) throws ServletException, NamespaceException {
+    @Deactivate
+    protected void deactivate(ComponentContext ctx) {
         if(renderersTracker != null) {
             renderersTracker.close();
             renderersTracker = null;

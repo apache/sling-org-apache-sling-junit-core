@@ -16,11 +16,10 @@
  */
 package org.apache.sling.junit.impl.servlet;
 
-import org.apache.felix.scr.annotations.Component;
-import org.apache.felix.scr.annotations.Property;
-import org.apache.felix.scr.annotations.Reference;
 import org.jacoco.agent.rt.IAgent;
 import org.osgi.service.component.ComponentContext;
+import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.annotations.Reference;
 import org.osgi.service.http.HttpService;
 import org.osgi.service.http.NamespaceException;
 import org.slf4j.Logger;
@@ -43,7 +42,10 @@ import java.util.Dictionary;
  * which is also available at /system/sling/jacoco after installing this servlet with the default settings.
  */
 @SuppressWarnings("serial")
-@Component(immediate = true, metatype = true)
+@Component(immediate = true,
+           property = {
+                JacocoServlet.SERVLET_PATH_NAME + "=/system/sling/jacoco"
+           })
 public class JacocoServlet extends HttpServlet {
     private static final String PARAM_SESSION_ID = ":sessionId";
     private static final String JMX_NAME = "org.jacoco:type=Runtime";
@@ -71,8 +73,7 @@ public class JacocoServlet extends HttpServlet {
     
     private final Logger log = LoggerFactory.getLogger(getClass());
 
-    @Property(value="/system/sling/jacoco")
-    static final String SERVLET_PATH_NAME = "servlet.path";
+    public static final String SERVLET_PATH_NAME = "servlet.path";
 
     /** Requests ending with this subpath send the jacoco data */
     public static final String EXEC_PATH = "/exec";
@@ -117,11 +118,10 @@ public class JacocoServlet extends HttpServlet {
      * Get the jacoco execution data without resetting the agent
      * @param req the request
      * @param resp the response
-     * @throws ServletException
      * @throws IOException
      */
     @Override
-    protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+    protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException {
         if(EXEC_PATH.equals(req.getPathInfo())) {
             final IAgent agent = getAgent();
             if (agent == null) {
@@ -147,7 +147,7 @@ public class JacocoServlet extends HttpServlet {
      * @throws IOException
      */
     @Override
-    protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+    protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws IOException {
         sendJacocoData(req, resp, true);
     }
     

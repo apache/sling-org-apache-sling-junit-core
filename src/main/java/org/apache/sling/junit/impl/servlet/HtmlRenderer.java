@@ -18,13 +18,10 @@ package org.apache.sling.junit.impl.servlet;
 
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.io.UnsupportedEncodingException;
 import java.util.Collection;
 
 import javax.servlet.http.HttpServletResponse;
 
-import org.apache.felix.scr.annotations.Component;
-import org.apache.felix.scr.annotations.Service;
 import org.apache.sling.junit.Renderer;
 import org.apache.sling.junit.RendererFactory;
 import org.apache.sling.junit.TestSelector;
@@ -32,10 +29,11 @@ import org.junit.runner.Description;
 import org.junit.runner.Result;
 import org.junit.runner.notification.Failure;
 import org.junit.runner.notification.RunListener;
+import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.annotations.ServiceScope;
 
 /** HTML renderer for JUnit servlet */
-@Component(immediate=false)
-@Service(serviceFactory=true)
+@Component(scope = ServiceScope.BUNDLE, service = {Renderer.class, RendererFactory.class})
 public class HtmlRenderer extends RunListener implements Renderer,RendererFactory {
 
     public static final String EXTENSION = "html";
@@ -99,7 +97,7 @@ public class HtmlRenderer extends RunListener implements Renderer,RendererFactor
         output.println("</div>");
     }
 
-    public void setup(HttpServletResponse response, String pageTitle) throws IOException, UnsupportedEncodingException {
+    public void setup(HttpServletResponse response, String pageTitle) throws IOException {
         if(output != null) {
             throw new IllegalStateException("Output Writer already set");
         }

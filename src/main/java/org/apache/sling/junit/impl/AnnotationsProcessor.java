@@ -18,19 +18,17 @@ package org.apache.sling.junit.impl;
 
 import java.lang.reflect.Field;
 
-import org.apache.felix.scr.annotations.Component;
-import org.apache.felix.scr.annotations.Service;
 import org.apache.sling.junit.TestObjectProcessor;
 import org.apache.sling.junit.annotations.TestReference;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.ServiceReference;
 import org.osgi.service.component.ComponentContext;
+import org.osgi.service.component.annotations.Component;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /** Processor for annotations in test classes */
-@Component(immediate=true)
-@Service
+@Component
 public class AnnotationsProcessor implements TestObjectProcessor {
     private Logger log = LoggerFactory.getLogger(getClass());
     private BundleContext bundleContext;

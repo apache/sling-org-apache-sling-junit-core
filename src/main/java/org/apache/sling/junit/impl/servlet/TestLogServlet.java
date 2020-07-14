@@ -34,16 +34,15 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import org.apache.felix.scr.annotations.Activate;
-import org.apache.felix.scr.annotations.Component;
-import org.apache.felix.scr.annotations.Deactivate;
-import org.apache.felix.scr.annotations.Property;
-import org.apache.felix.scr.annotations.Reference;
 import org.apache.sling.commons.osgi.PropertiesUtil;
 import org.junit.runner.Description;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.Constants;
 import org.osgi.framework.ServiceRegistration;
+import org.osgi.service.component.annotations.Activate;
+import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.annotations.Deactivate;
+import org.osgi.service.component.annotations.Reference;
 import org.osgi.service.http.HttpService;
 import org.osgi.service.http.NamespaceException;
 import org.osgi.service.http.whiteboard.HttpWhiteboardConstants;
@@ -57,9 +56,13 @@ import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.Layout;
 import ch.qos.logback.core.read.CyclicBufferAppender;
 
-@Component(immediate=true, metatype=true,
-        label = "Apache Sling Test Log Collector",
-        description = "Servlet that exposes logs collected for a particular test execution"
+@Component(
+        immediate=true,
+        property = {
+                TestLogServlet.SERVLET_PATH_NAME + "=/system/sling/testlog",
+                TestLogServlet.LOG_BUFFER_SIZE + ":Integer=" + TestLogServlet.DEFAULT_SIZE,
+                TestLogServlet.PROP_MSG_PATTERN + "=" + TestLogServlet.DEFAULT_PATTERN
+        }
 )
 public class TestLogServlet extends HttpServlet {
     private final Logger log = LoggerFactory.getLogger(getClass());
@@ -70,23 +73,13 @@ public class TestLogServlet extends HttpServlet {
     public static final String TEST_NAME = "X-Sling-TestName";
     public static final String TEST_CLASS = "X-Sling-TestClass";
 
-    @Property(value="/system/sling/testlog")
-    static final String SERVLET_PATH_NAME = "servlet.path";
+    public static final String SERVLET_PATH_NAME = "servlet.path";
 
-    static final int DEFAULT_SIZE = 1000;
-    @Property(intValue = DEFAULT_SIZE,
-            label = "Log Buffer Size",
-            description = "Size of in memory log buffer. Only recent logs upto buffer size would be retained"
-    )
-    static final String LOG_BUFFER_SIZE = "log.buffer.size";
+    public static final int DEFAULT_SIZE = 1000;
+    public static final String LOG_BUFFER_SIZE = "log.buffer.size";
 
-    private static final String DEFAULT_PATTERN = "%d{dd.MM.yyyy HH:mm:ss.SSS} *%level* [%thread] %logger %msg%n";
-
-    @Property(label = "Log Pattern",
-            description = "Message Pattern for formatting the log messages",
-            value = DEFAULT_PATTERN
-    )
-    private static final String PROP_MSG_PATTERN = "logPattern";
+    public static final String DEFAULT_PATTERN = "%d{dd.MM.yyyy HH:mm:ss.SSS} *%level* [%thread] %logger %msg%n";
+    public static final String PROP_MSG_PATTERN = "logPattern";
 
     /** Non-null if we are registered with HttpService */
     private String servletPath;

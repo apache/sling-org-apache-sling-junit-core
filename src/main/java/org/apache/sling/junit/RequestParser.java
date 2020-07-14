@@ -34,6 +34,8 @@ public class RequestParser implements TestSelector {
      *  TEST_SELECTOR/TEST_METHOD.EXTENSION
      *  or
      *  TEST_SELECTOR.EXTENSION
+     *
+     * @param subpath the sub-path
      */
     public RequestParser(String subpath) {
         

@@ -1,0 +1,12 @@
+Bundle-Activator: org.apache.sling.junit.Activator
+Export-Package: junit.framework;version=${junit.version}, \
+                org.junit;version=${junit.version}, \
+                org.junit.matchers.*;version=${junit.version}, \
+                org.junit.rules.*;version=${junit.version}, \
+                org.junit.runner.*;version=${junit.version}, \
+                org.junit.runners.*;version=${junit.version}, \
+                org.junit.experimental.categories.*;version=${junit.version}, \
+                org.junit.validator.*;version=${junit.version}, \
+                org.hamcrest.*;version=${hamcrest.version};-split-package:=merge-first
+-conditionalpackage: org.hamcrest.*, org.junit.*, junit.*
+-includeresource: @org.jacoco.agent-*.jar!/org/jacoco/agent/rt/IAgent*

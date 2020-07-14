@@ -23,13 +23,12 @@ import java.util.Collection;
 
 import javax.servlet.http.HttpServletResponse;
 
-import org.apache.felix.scr.annotations.Component;
-import org.apache.felix.scr.annotations.Service;
 import org.apache.sling.junit.Renderer;
 import org.apache.sling.junit.RendererFactory;
 import org.apache.sling.junit.TestSelector;
 import org.junit.runner.Result;
 import org.junit.runner.notification.RunListener;
+import org.osgi.service.component.annotations.Component;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,7 +36,6 @@ import org.slf4j.LoggerFactory;
  *  renders the serialized JUnit Result object.
  */
 @Component
-@Service
 public class JUnitResultRenderer extends RunListener implements Renderer,RendererFactory {
 
     public static final String EXTENSION = "junit_result";

@@ -16,17 +16,36 @@
  */
 package org.apache.sling.junit;
 
-/** Used by the {@link TestsManager} to select which tests to run */
+/**
+ * Used by the {@link TestsManager} to select which tests to run
+ */
 public interface TestSelector {
-    /** If true, testName will be selected */
+    /**
+     * If true, testName will be selected
+     *
+     * @param testName the name of the test
+     * @return {@code true} if the test will be selected, {@code false} otherwise
+     */
     boolean acceptTestName(String testName);
-    
-    /** If not null, only test methods having this name are executed */
+
+    /**
+     * Returns the name of the selected test.
+     *
+     * @return the name of the selected test
+     */
     String getSelectedTestMethodName();
-    
-    /** Return the String used to select tests */
+
+    /**
+     * Return the String used to select tests
+     *
+     * @return the string used to select the tests
+     */
     String getTestSelectorString();
-    
-    /** Return the extension used to render results */
+
+    /**
+     * Return the extension used to render results
+     *
+     * @return the extension used to render the results
+     */
     String getExtension();
 }

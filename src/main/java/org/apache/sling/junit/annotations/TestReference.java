@@ -22,29 +22,28 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 
-/** Annotation used to inject services in test classes. Similar
- *  to the Felix @Reference annotation, but we need RetentionPolicy.RUNTIME
- *  so we cannot use that one.
- *   
- *  @deprecated - the {#link TeleporterRule} is a much simpler way of executing
- *      server-side tests, including OSGi service injection.
+/**
+ * Annotation used to inject services in test classes. Similar to the Felix @Reference annotation, but we need RetentionPolicy.RUNTIME so we
+ * cannot use that one.
+ *
+ * @deprecated - the {#link TeleporterRule} is a much simpler way of executing server-side tests, including OSGi service injection.
  */
-@Target( { ElementType.FIELD })
+@Target({ElementType.FIELD})
 @Retention(RetentionPolicy.RUNTIME)
 @Deprecated
 public @interface TestReference {
     /**
-     * The local name of the reference.
-     * Default value is the name of the field to
-     * which the annotation applies.
+     * The local name of the reference. Default value is the name of the field to which the annotation applies.
+     *
+     * @return the local name of the reference ("" by default)
      */
     String name() default "";
 
     /**
-     * The name of the service interface. This name is used by the Service
-     * Component Runtime to access the service on behalf of the component. 
-     * The default value for is the type of the field to which
-     * the annotation applies.
+     * The name of the service interface. This name is used by the Service Component Runtime to access the service on behalf of the
+     * component. The default value for is the type of the field to which the annotation applies.
+     *
+     * @return the service interface
      */
     Class<?> referenceInterface() default AutoDetect.class;
 }

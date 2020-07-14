@@ -18,20 +18,21 @@ package org.apache.sling.junit.impl.servlet;
 
 import java.io.IOException;
 
+import javax.servlet.Servlet;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import org.apache.felix.scr.annotations.Component;
-import org.apache.felix.scr.annotations.Properties;
-import org.apache.felix.scr.annotations.Property;
-import org.apache.felix.scr.annotations.Reference;
-import org.apache.felix.scr.annotations.Service;
 import org.apache.sling.junit.RendererSelector;
 import org.apache.sling.junit.TestSelector;
 import org.apache.sling.junit.TestsManager;
+import org.apache.sling.servlets.annotations.SlingServletResourceTypes;
 import org.osgi.service.component.ComponentContext;
+import org.osgi.service.component.annotations.Activate;
+import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.annotations.Deactivate;
+import org.osgi.service.component.annotations.Reference;
 import org.osgi.service.http.NamespaceException;
 
 /** Alternate entry point for testing, that uses
@@ -48,13 +49,12 @@ import org.osgi.service.http.NamespaceException;
  *  with this resource type.
  */
 @SuppressWarnings("serial")
-@Component(metatype=true)
-@Service(value=javax.servlet.Servlet.class)
-@Properties({
-        @Property(name="sling.servlet.resourceTypes", value="sling/junit/testing"),
-        @Property(name="sling.servlet.extensions", value="junit"),
-        @Property(name="sling.servlet.methods", value={"GET","POST"})
-})
+@Component(service = Servlet.class)
+@SlingServletResourceTypes(
+        resourceTypes = "sling/junit/testing",
+        extensions = "junit",
+        methods = {"GET", "POST"}
+)
 public class SlingJUnitServlet extends HttpServlet {
 
     public static final String EXTENSION = ".junit";
@@ -67,7 +67,8 @@ public class SlingJUnitServlet extends HttpServlet {
 
     private volatile ServletProcessor processor;
 
-    protected void activate(final ComponentContext ctx) throws ServletException, NamespaceException {
+    @Activate
+    protected void activate(final ComponentContext ctx) {
         this.processor = new ServletProcessor(testsManager, rendererSelector) {
             @Override
             protected String getTestSelectionPath(HttpServletRequest request) {
@@ -98,7 +99,8 @@ public class SlingJUnitServlet extends HttpServlet {
         };
     }
 
-    protected void deactivate(ComponentContext ctx) throws ServletException, NamespaceException {
+    @Deactivate
+    protected void deactivate(ComponentContext ctx) {
         this.processor = null;
     }
 

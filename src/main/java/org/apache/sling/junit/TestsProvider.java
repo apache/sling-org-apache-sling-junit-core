@@ -18,24 +18,38 @@ package org.apache.sling.junit;
 
 import java.util.List;
 
-/** Provides tests, for example by scanning bundles, 
- *  finding test resources in a content repository, etc.
+/**
+ * Provides tests, for example by scanning bundles, finding test resources in a content repository, etc.
  */
 public interface TestsProvider {
-    /** Return this service's PID, client might use it later
-     *  to instantiate a specific test. 
+    /**
+     * Return this service's PID, client might use it later to instantiate a specific test.
+     *
+     * @return the service pid
      */
     String getServicePid();
-    
-    /** Return the list of available tests */
+
+    /**
+     * Return the list of available tests
+     *
+     * @return the list of available tests
+     */
     List<String> getTestNames();
-    
-    /** Create a test class to execute the specified test.
-     *  The test executes in the same thread that calls
-     *  this method, to allow using ThreadLocals to pass
-     *  context to the test if needed. */
+
+    /**
+     * Create a test class to execute the specified test. The test executes in the same thread that calls this method, to allow using
+     * ThreadLocals to pass context to the test if needed.
+     *
+     * @param testName the name of the test for which a test class needs to be created
+     * @return the test class
+     * @throws ClassNotFoundException when the class cannot be created
+     */
     Class<?> createTestClass(String testName) throws ClassNotFoundException;
-    
-    /** Return the timestamp at which our list of tests was last modified */
+
+    /**
+     * Return the timestamp at which our list of tests was last modified
+     *
+     * @return the last modified date of the tests list as a timestamp
+     */
     long lastModified();
 }
