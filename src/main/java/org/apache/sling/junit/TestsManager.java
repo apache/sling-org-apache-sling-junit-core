@@ -34,12 +34,6 @@ public interface TestsManager {
     Collection<String> getTestNames(TestSelector selector);
 
     /**
-     * Clear our internal caches. Useful in automated testing, to make sure changes introduced by recent uploads or configuration or bundles
-     * changes are taken into account immediately.
-     */
-    void clearCaches();
-
-    /**
      * Instantiate test class for specified test
      *
      * @param testName the test class
@@ -66,4 +60,13 @@ public interface TestsManager {
      * @throws Exception if any error occurs
      */
     void executeTests(Collection<String> testNames, Renderer renderer, TestSelector selector) throws Exception;
+
+    /**
+     * Clear our internal caches. Useful in automated testing, to make sure changes introduced by recent uploads or configuration or bundles
+     * changes are taken into account immediately.
+     *
+     * @deprecated Caches have been removed.
+     */
+    @Deprecated
+    void clearCaches();
 }

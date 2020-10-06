@@ -19,8 +19,8 @@ package org.apache.sling.junit.impl.servlet;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.ArrayList;
 import java.util.Collections;
-import java.util.LinkedList;
 import java.util.List;
 
 import javax.servlet.ServletException;
@@ -53,14 +53,10 @@ public class ServletProcessor {
     }
 
     /** Return sorted list of available tests
-     * @param prefix optionally select only names that match this prefix
+     * @param selector optionally select only names that match this selector
      */
-    private List<String> getTestNames(TestSelector selector, boolean forceReload) {
-        final List<String> result = new LinkedList<String>();
-        if(forceReload) {
-            log.debug("{} is true, clearing TestsManager caches", FORCE_RELOAD_PARAM);
-        }
-        result.addAll(testsManager.getTestNames(selector));
+    private List<String> getTestNames(TestSelector selector) {
+        final List<String> result = new ArrayList<>(testsManager.getTestNames(selector));
         Collections.sort(result);
         return result;
     }
@@ -81,16 +77,17 @@ public class ServletProcessor {
         }
     }
 
-    private boolean getForceReloadOption(HttpServletRequest request) {
-        final boolean forceReload = "true".equalsIgnoreCase(request.getParameter(FORCE_RELOAD_PARAM));
-        log.debug("{} option is set to {}", FORCE_RELOAD_PARAM, forceReload);
-        return forceReload;
+    private void logForceReloadOptionDeprecation(HttpServletRequest request) {
+        final String forceReloadParam = request.getParameter(FORCE_RELOAD_PARAM);
+        if (forceReloadParam != null) {
+            log.info("{} option is no longer necessary and its use is therefore deprecated", FORCE_RELOAD_PARAM);
+        }
     }
 
     /** GET request lists available tests */
     public void doGet(final HttpServletRequest request, final HttpServletResponse response, final String servletPath)
     throws ServletException, IOException {
-        final boolean forceReload = getForceReloadOption(request);
+        logForceReloadOptionDeprecation(request);
 
         // Redirect to / if called without it, and serve CSS if requested
         {
@@ -104,7 +101,7 @@ public class ServletProcessor {
         }
 
         final TestSelector selector = getTestSelector(request);
-        final List<String> testNames = getTestNames(selector, forceReload);
+        final List<String> testNames = getTestNames(selector);
         
         // 404 if no tests found
         if(testNames.isEmpty()) {
@@ -137,10 +134,10 @@ public class ServletProcessor {
     /** POST request executes tests */
     public void doPost(HttpServletRequest request, HttpServletResponse response)
     throws ServletException, IOException {
+        logForceReloadOptionDeprecation(request);
+
         final TestSelector selector = getTestSelector(request);
-        final boolean forceReload = getForceReloadOption(request);
-        log.info("POST request, executing tests: {}, {}={}",
-                new Object[] { selector, FORCE_RELOAD_PARAM, forceReload});
+        log.info("POST request, executing tests: {}", selector);
 
         final Renderer renderer = rendererSelector.getRenderer(selector);
         if(renderer == null) {
@@ -148,7 +145,7 @@ public class ServletProcessor {
         }
         renderer.setup(response, getClass().getSimpleName());
 
-        final List<String> testNames = getTestNames(selector, forceReload);
+        final List<String> testNames = getTestNames(selector);
         if(testNames.isEmpty()) {
             response.sendError(
                     HttpServletResponse.SC_NOT_FOUND,

@@ -16,34 +16,28 @@
  */
 package org.apache.sling.junit.impl;
 
+import static java.util.Collections.emptySet;
+import static java.util.Collections.singletonList;
 import static junit.framework.TestCase.assertFalse;
 import static junit.framework.TestCase.assertTrue;
-import static org.powermock.api.mockito.PowerMockito.mock;
-import static org.powermock.api.mockito.PowerMockito.when;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import java.util.HashSet;
 import java.util.Hashtable;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
-import org.apache.sling.junit.Activator;
+
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.mockito.Mockito;
 import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleContext;
-import org.powermock.api.mockito.PowerMockito;
-import org.powermock.core.classloader.annotations.PrepareForTest;
-import org.powermock.modules.junit4.PowerMockRunner;
-import org.powermock.reflect.Whitebox;
+import org.osgi.framework.wiring.BundleWiring;
 
 /**
  * Validate waitForSystemStartup method, along with private some implementations.
  */
-@RunWith(PowerMockRunner.class)
-@PrepareForTest({ Activator.class, TestsManagerImpl.class })
 public class TestsManagerImplTest {
 
-  private static final String WAIT_METHOD_NAME = "needToWait";
   private static final int SYSTEM_STARTUP_SECONDS = 2;
 
   static {
@@ -55,59 +49,67 @@ public class TestsManagerImplTest {
    * case if needToWait should return true, mainly it still have some bundles in the list to wait, and global timeout didn't pass.
    */
   @Test
-  public void needToWaitPositiveNotEmptyListNotGloballyTimeout() throws Exception {
+  public void needToWaitPositiveNotEmptyListNotGloballyTimeout() {
     long startupTimeout = System.currentTimeMillis() + TimeUnit.SECONDS.toMillis(5 * SYSTEM_STARTUP_SECONDS);
-    final Set<Bundle> bundlesToWaitFor = new HashSet<Bundle>();
-    bundlesToWaitFor.add(Mockito.mock(Bundle.class));
-    assertTrue((Boolean)Whitebox.invokeMethod(TestsManagerImpl.class, WAIT_METHOD_NAME, startupTimeout, bundlesToWaitFor));
+    final Set<Bundle> bundlesToWaitFor = new HashSet<>(singletonList(mock(Bundle.class)));
+    assertTrue(TestsManagerImpl.needToWait(startupTimeout, bundlesToWaitFor));
   }
 
   /**
    * case if needToWait should return false, when for example it reached the global timeout limit.
    */
   @Test
-  public void needToWaitNegativeForstartupTimeout() throws Exception {
+  public void needToWaitNegativeForstartupTimeout() {
     long lastChange = System.currentTimeMillis() - TimeUnit.SECONDS.toMillis(SYSTEM_STARTUP_SECONDS / 2);
     long startupTimeout = lastChange - TimeUnit.SECONDS.toMillis(1);
-    assertFalse((Boolean)Whitebox.invokeMethod(TestsManagerImpl.class, WAIT_METHOD_NAME, startupTimeout, new HashSet<Bundle>()));
+    assertFalse(TestsManagerImpl.needToWait(startupTimeout, emptySet()));
   }
 
   /**
    * case if needToWait should return false, when for example it reached the global timeout limit.
    */
   @Test
-  public void needToWaitNegativeForEmptyList() throws Exception {
+  public void needToWaitNegativeForEmptyList() {
     long lastChange = System.currentTimeMillis() - TimeUnit.SECONDS.toMillis(SYSTEM_STARTUP_SECONDS / 2);
     long startupTimeout = lastChange + TimeUnit.SECONDS.toMillis(10);
-    assertFalse((Boolean)Whitebox.invokeMethod(TestsManagerImpl.class, WAIT_METHOD_NAME, startupTimeout, new HashSet<Bundle>()));
+    assertFalse(TestsManagerImpl.needToWait(startupTimeout, emptySet()));
   }
 
   @Test
   public void waitForSystemStartupTimeout() {
-    setupBundleContextMock(Bundle.INSTALLED);
-    final long elapsed = TestsManagerImpl.waitForSystemStartup();
+    BundleContext bundleContext = setupBundleContext(Bundle.INSTALLED);
+    TestsManagerImpl testsManager = new TestsManagerImpl();
+    testsManager.activate(bundleContext);
+    
+    final long elapsed = testsManager.waitForSystemStartup();
     assertTrue(elapsed > TimeUnit.SECONDS.toMillis(SYSTEM_STARTUP_SECONDS));
     assertTrue(elapsed < TimeUnit.SECONDS.toMillis(SYSTEM_STARTUP_SECONDS + 1));
-    assertFalse((Boolean) Whitebox.getInternalState(TestsManagerImpl.class, "waitForSystemStartup"));
+    assertTrue(testsManager.isReady());
   }
 
   @Test
   public void waitForSystemStartupAllActiveBundles() {
-    setupBundleContextMock(Bundle.ACTIVE);
-    final long elapsed = TestsManagerImpl.waitForSystemStartup();
+    BundleContext bundleContext = setupBundleContext(Bundle.ACTIVE);
+    TestsManagerImpl testsManager = new TestsManagerImpl();
+    testsManager.activate(bundleContext);
+
+    final long elapsed = testsManager.waitForSystemStartup();
     assertTrue(elapsed < TimeUnit.SECONDS.toMillis(SYSTEM_STARTUP_SECONDS));
-    assertFalse((Boolean) Whitebox.getInternalState(TestsManagerImpl.class, "waitForSystemStartup"));
+    assertTrue(testsManager.isReady());
   }
 
-  private void setupBundleContextMock(final int bundleState) {
-    PowerMockito.mockStatic(Activator.class);
-    BundleContext mockedBundleContext = mock(BundleContext.class);
-    Bundle mockedBundle = mock(Bundle.class);
-    Hashtable<String, String> bundleHeaders = new Hashtable<String, String>();
-    when(mockedBundle.getState()).thenReturn(bundleState);
-    when(mockedBundle.getHeaders()).thenReturn(bundleHeaders);
-    when(mockedBundleContext.getBundles()).thenReturn(new Bundle[] { mockedBundle });
-    when(Activator.getBundleContext()).thenReturn(mockedBundleContext);
-    Whitebox.setInternalState(TestsManagerImpl.class, "waitForSystemStartup", true);
+  private BundleContext setupBundleContext(int state) {
+    final Bundle bundle = mock(Bundle.class);
+    when(bundle.getSymbolicName()).thenReturn("mocked-bundle");
+    when(bundle.getState()).thenReturn(state);
+    when(bundle.adapt(BundleWiring.class)).thenReturn(mock(BundleWiring.class));
+    when(bundle.getHeaders()).thenReturn(new Hashtable<>());
+
+    final BundleContext bundleContext = mock(BundleContext.class);
+    when(bundleContext.getBundle()).thenReturn(bundle);
+    when(bundleContext.getBundles()).thenAnswer(m -> new Bundle[] { bundle });
+
+    when(bundle.getBundleContext()).thenReturn(bundleContext);
+    return bundleContext;
   }
 }

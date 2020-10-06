@@ -29,7 +29,7 @@ public class TestContextRunListenerWrapper extends RunListener {
     private long testStartTime;
     private static final Logger log = LoggerFactory.getLogger(TestContextRunListenerWrapper.class);
     
-    TestContextRunListenerWrapper(RunListener toWrap) {
+    public TestContextRunListenerWrapper(RunListener toWrap) {
         wrapped = toWrap;
     }
 

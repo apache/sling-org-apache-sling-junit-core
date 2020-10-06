@@ -43,6 +43,9 @@ h2,h3,h4 {
   padding: 1em;
   border: solid red 1px;
   background-color: #FFFFCC;
+  white-space: pre;
+  max-height: 20.5em;
+  overflow-y: scroll;
 }
 
 .failure h3 {
