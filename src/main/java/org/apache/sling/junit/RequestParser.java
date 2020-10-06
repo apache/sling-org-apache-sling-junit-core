@@ -77,10 +77,15 @@ public class RequestParser implements TestSelector {
 
     public String toString() {
         return getClass().getSimpleName() 
-                + ", testSelector [" + testNameSelector + "]"
-                + ", methodName [" + selectedMethodName + "]"
-                + ", extension [" + extension + "]"
+                + ", testSelector [" + safeForLogging(testNameSelector) + "]"
+                + ", methodName [" + safeForLogging(selectedMethodName) + "]"
+                + ", extension [" + safeForLogging(extension) + "]"
                 ;
+    }
+
+    private static String safeForLogging(String str) {
+        // protect against logging injection attacks
+        return str.replaceAll("[\n\r\t]", "_");
     }
 
     public String getTestSelectorString() {

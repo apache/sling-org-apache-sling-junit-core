@@ -16,35 +16,34 @@
  */
 package org.apache.sling.junit.impl;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.TimeUnit;
-
-import org.apache.sling.junit.Activator;
 import org.apache.sling.junit.Renderer;
-import org.apache.sling.junit.SlingTestContextProvider;
+import org.apache.sling.junit.RequestParser;
 import org.apache.sling.junit.TestSelector;
 import org.apache.sling.junit.TestsManager;
 import org.apache.sling.junit.TestsProvider;
-import org.junit.runner.JUnitCore;
-import org.junit.runner.Request;
+import org.apache.sling.junit.impl.servlet.junit5.JUnit5TestExecutionStrategy;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.Constants;
-import org.osgi.framework.ServiceReference;
-import org.osgi.service.component.ComponentContext;
+import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.annotations.Deactivate;
 import org.osgi.util.tracker.ServiceTracker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.Set;
+import java.util.concurrent.TimeUnit;
+import java.util.function.BiFunction;
+import java.util.function.Function;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Component
 public class TestsManagerImpl implements TestsManager {
@@ -54,174 +53,136 @@ public class TestsManagerImpl implements TestsManager {
     // Global Timeout up to which it stop waiting for bundles to be all active, default to 40 seconds.
     public static final String PROP_STARTUP_TIMEOUT_SECONDS = "sling.junit.core.SystemStartupTimeoutSeconds";
 
-    private static volatile int startupTimeoutSeconds = Integer.parseInt(System.getProperty(PROP_STARTUP_TIMEOUT_SECONDS, "40"));
+    private final int startupTimeoutSeconds = Integer.parseInt(System.getProperty(PROP_STARTUP_TIMEOUT_SECONDS, "40"));
 
-    private static volatile boolean waitForSystemStartup = true;
+    private volatile boolean waitForSystemStartup = true;
 
-    private ServiceTracker tracker;
-
-    private int lastTrackingCount = -1;
+    boolean isReady() {
+        return !waitForSystemStartup;
+    }
 
     private BundleContext bundleContext;
+
+    private ServiceTracker<TestsProvider, TestsProvider> testsProviderTracker;
     
-    // List of providers
-    private final List<TestsProvider> providers = new ArrayList<TestsProvider>();
-    
-    // Map of test names to their provider's PID
-    private Map<String, String> tests = new ConcurrentHashMap<String, String>();
-    
-    // Last-modified values for each provider
-    private Map<String, Long> lastModified = new HashMap<String, Long>();
-    
-    protected void activate(ComponentContext ctx) {
-        bundleContext = ctx.getBundleContext();
-        tracker = new ServiceTracker(bundleContext, TestsProvider.class.getName(), null);
-        tracker.open();
+    private TestExecutionStrategy executionStrategy;
+
+    @Activate
+    protected void activate(BundleContext ctx) {
+        bundleContext = ctx;
+        testsProviderTracker = new ServiceTracker<>(bundleContext, TestsProvider.class, null);
+        testsProviderTracker.open();
+        try {
+            executionStrategy = new JUnit5TestExecutionStrategy(this, ctx);
+        } catch (NoClassDefFoundError e) {
+            // (some) optional imports to org.junit.platform.* (JUnit5 API) are missing
+            executionStrategy = new JUnit4TestExecutionStrategy(this);
+        }
     }
 
-    protected void deactivate(ComponentContext ctx) {
-        if(tracker != null) {
-            tracker.close();
+    @Deactivate
+    protected void deactivate() {
+        if(testsProviderTracker != null) {
+            testsProviderTracker.close();
+            testsProviderTracker = null;
         }
-        tracker = null;
+
+        if (executionStrategy != null) {
+            executionStrategy.close();
+            executionStrategy = null;
+        }
+
         bundleContext = null;
     }
-    
-    public void clearCaches() {
-        log.debug("Clearing internal caches");
-        lastModified.clear();
-        lastTrackingCount = -1;
-    }
-    
-    public Class<?> getTestClass(String testName) throws ClassNotFoundException {
-        maybeUpdateProviders();
 
-        // find TestsProvider that can instantiate testName
-        final String providerPid = tests.get(testName);
-        if(providerPid == null) {
-            throw new IllegalStateException("Provider PID not found for test " + testName);
-        }
-        TestsProvider provider = null;
-        for(TestsProvider p : providers) {
-            if(p.getServicePid().equals(providerPid)) {
-                provider = p;
-                break;
-            }
-        }
-        
-        if(provider == null) {
-            throw new IllegalStateException("No TestsProvider found for PID " + providerPid);
-        }
+    @NotNull
+    public Class<?> getTestClass(@NotNull String testName) throws ClassNotFoundException {
+        final TestsProvider provider = getTestProviders()
+                .filter(p -> p.getTestNames().contains(testName))
+                .findFirst()
+                .orElseThrow(() -> new ClassNotFoundException("No TestsProvider found for test '" + testName + "'"));
 
         log.debug("Using provider {} to create test class {}", provider, testName);
         return provider.createTestClass(testName);
     }
 
-    public Collection<String> getTestNames(TestSelector selector) {
-        maybeUpdateProviders();
-        
-        // If any provider has changes, reload the whole list
-        // of test names (to keep things simple)
-        boolean reload = false;
-        for(TestsProvider p : providers) {
-            final Long lastMod = lastModified.get(p.getServicePid());
-            if(lastMod == null || lastMod != p.lastModified()) {
-                reload = true;
-                log.debug("{} updated, will reload test names from all providers", p);
-                break;
-            }
-        }
-        
-        if(reload) {
-            tests.clear();
-            for(TestsProvider p : providers) {
-                final String pid = p.getServicePid();
-                if(pid == null) {
-                    log.warn("{} has null PID, ignored", p);
-                    continue;
-                }
-                lastModified.put(pid, p.lastModified());
-                final List<String> names = p.getTestNames(); 
-                for(String name : names) {
-                    tests.put(name, pid);
-                }
-                log.debug("Added {} test names from provider {}", names.size(), p);
-            }
-            log.info("Test names reloaded, total {} names from {} providers", tests.size(), providers.size());
-        }
-        
-        final Collection<String> allTests = tests.keySet();
+    @Override
+    public Collection<String> getTestNames(@Nullable TestSelector selector) {
+        final List<String> tests = getTestProviders()
+                .map(TestsProvider::getTestNames)
+                .flatMap(Collection::stream)
+                .sorted()
+                .collect(Collectors.toList());
+        final int allTestsCount = tests.size();
         if(selector == null) {
-            log.debug("No TestSelector supplied, returning all {} tests", allTests.size());
-            return allTests;
+            log.debug("No TestSelector supplied, returning all {} tests", allTestsCount);
         } else {
-            final List<String> result = new LinkedList<String>();
-            for(String test : allTests) {
-                if(selector.acceptTestName(test)) {
-                    result.add(test);
-                }
-            }
-            log.debug("{} selected {} tests out of {}", selector, result.size(), allTests.size());
-            return result;
+            tests.removeIf(testName -> !selector.acceptTestName(testName));
+            log.debug("{} selected {} tests out of {}", selector, tests.size(), allTestsCount);
         }
-    }
-    
-    /** Update our list of providers if tracker changed */
-    private void maybeUpdateProviders() {
-        if(tracker.getTrackingCount() != lastTrackingCount) {
-            // List of providers changed, need to reload everything
-            lastModified.clear();
-            List<TestsProvider> newList = new ArrayList<TestsProvider>();
-            for(ServiceReference ref : tracker.getServiceReferences()) {
-                newList.add((TestsProvider)bundleContext.getService(ref));
-            }
-            synchronized (providers) {
-                providers.clear();
-                providers.addAll(newList);
-            }
-            log.info("Updated list of TestsProvider: {}", providers);
-        }
-        lastTrackingCount = tracker.getTrackingCount();
+        return tests;
     }
 
-    public void executeTests(Collection<String> testNames, Renderer renderer, TestSelector selector) throws Exception {
+    private Stream<TestsProvider> getTestProviders() {
+        return testsProviderTracker.getTracked().values().stream();
+    }
+
+    @Override
+    public void executeTests(@Nullable Collection<String> testNames, @NotNull Renderer renderer, @Nullable TestSelector selector) throws Exception {
+        if (selector != null) {
+            executeTests(renderer, selector);
+        } else if (testNames != null){
+            executeTests(renderer, new RequestParser(null) {
+                @Override
+                public boolean acceptTestName(String testName) {
+                    return testNames.contains(testName);
+                }
+            });
+        } else {
+            executeTests(renderer, null);
+        }
+    }
+
+    @Override
+    public void executeTests(@NotNull Renderer renderer, @Nullable TestSelector selector) throws Exception {
         renderer.title(2, "Running tests");
         waitForSystemStartup();
-        final JUnitCore junit = new JUnitCore();
-        
-        // Create a test context if we don't have one yet
-        final boolean createContext =  !SlingTestContextProvider.hasContext();
-        if(createContext) {
-            SlingTestContextProvider.createContext();
-        }
-        
-        try {
-            junit.addListener(new TestContextRunListenerWrapper(renderer.getRunListener()));
-            for(String className : testNames) {
-                renderer.title(3, className);
-                
-                // If we have a test context, clear its output metadata
-                if(SlingTestContextProvider.hasContext()) {
-                    SlingTestContextProvider.getContext().output().clear();
-                }
-                
-                final String testMethodName = selector == null ? null : selector.getSelectedTestMethodName();
-                if(testMethodName != null && testMethodName.length() > 0) {
-                    log.debug("Running test method {} from test class {}", testMethodName, className);
-                    junit.run(Request.method(getTestClass(className), testMethodName));
-                } else {
-                    log.debug("Running test class {}", className);
-                    junit.run(getTestClass(className));
-                }
-            }
-        } finally {
-            if(createContext) {
-                SlingTestContextProvider.deleteContext();
-            }
-        }
+        executionStrategy.execute(selector, new TestContextRunListenerWrapper(renderer.getRunListener()));
     }
 
-    public void listTests(Collection<String> testNames, Renderer renderer) {
+    public <T> T createTestRequest(TestSelector selector,
+                            BiFunction<Class<?>, String, T> methodRequestFactory,
+                            Function<Class<?>[], T> classesRequestFactory) throws ClassNotFoundException {
+        final T request;
+        final Collection<String> testNames = getTestNames(selector);
+        if (testNames.isEmpty()) {
+            throw new NoTestCasesFoundException();
+        }
+        final String testMethodName = selector == null ? null : selector.getSelectedTestMethodName();
+        if (testNames.size() == 1 && isNotBlank(testMethodName)) {
+            final String className = testNames.iterator().next();
+            log.debug("Running test method {} from test class {}", testMethodName, className);
+            request = methodRequestFactory.apply(getTestClass(className), testMethodName);
+        } else {
+            if (isNotBlank(testMethodName)) {
+                throw new IllegalStateException("A test method name is only supported for a single test class");
+            }
+            final List<Class<?>> testClasses = new ArrayList<>();
+            for (String className : testNames) {
+                log.debug("Running test class {}", className);
+                testClasses.add(getTestClass(className));
+            }
+            request = classesRequestFactory.apply(testClasses.toArray(new Class[0]));
+        }
+        return request;
+    }
+
+    private static boolean isNotBlank(String str) {
+        return str != null && str.length() > 0;
+    }
+
+    @Override
+    public void listTests(@NotNull Collection<String> testNames, @NotNull Renderer renderer) {
         renderer.title(2, "Test classes");
         final String note = "The test set can be restricted using partial test names"
                 + " as a suffix to this URL"
@@ -230,21 +191,21 @@ public class TestsManagerImpl implements TestsManager {
         renderer.list("testNames", testNames);
     }
 
+    @Override
+    public void clearCaches() {
+        // deprecated method kept for backwards compatibility
+    }
 
     /** Wait for all bundles to be started
      *  @return number of msec taken by this method to execute
     */
-    public static long waitForSystemStartup() {
+    long waitForSystemStartup() {
         long elapsedMsec = -1;
         if (waitForSystemStartup) {
             waitForSystemStartup = false;
-            final BundleContext bundleContext = Activator.getBundleContext();
-            final Set<Bundle> bundlesToWaitFor = new HashSet<Bundle>();
-            for (final Bundle bundle : bundleContext.getBundles()) {
-                if (bundle.getState() != Bundle.ACTIVE && !isFragment(bundle)) {
-                    bundlesToWaitFor.add(bundle);
-                }
-            }
+            final Set<Bundle> bundlesToWaitFor = Stream.of(bundleContext.getBundles())
+                    .filter(not(TestsManagerImpl::isActive).and(not(TestsManagerImpl::isFragment)))
+                    .collect(Collectors.toSet());
 
             // wait max inactivityTimeout after the last bundle became active before giving up
             final long startTime = System.currentTimeMillis();
@@ -256,14 +217,7 @@ public class TestsManagerImpl implements TestsManager {
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                 }
-                Iterator<Bundle> bundles = bundlesToWaitFor.iterator();
-                while (bundles.hasNext()) {
-                    Bundle bundle = bundles.next();
-                    if (bundle.getState() == Bundle.ACTIVE) {
-                        bundles.remove();
-                        log.debug("Bundle {} is now active", bundle.getSymbolicName());
-                    }
-                }
+                bundlesToWaitFor.removeIf(TestsManagerImpl::isActive);
             }
 
             elapsedMsec = System.currentTimeMillis() - startTime;
@@ -280,11 +234,19 @@ public class TestsManagerImpl implements TestsManager {
         return elapsedMsec;
     }
 
-    private static boolean needToWait(final long startupTimeout, final Collection<Bundle> bundlesToWaitFor) {
+    static boolean needToWait(final long startupTimeout, final Collection<Bundle> bundlesToWaitFor) {
         return startupTimeout > System.currentTimeMillis() && !bundlesToWaitFor.isEmpty();
+    }
+
+    private static <T> Predicate<T> not(Predicate<T> predicate) {
+        return predicate.negate();
     }
 
     private static boolean isFragment(final Bundle bundle) {
         return bundle.getHeaders().get(Constants.FRAGMENT_HOST) != null;
+    }
+
+    private static boolean isActive(Bundle bundle) {
+        return bundle.getState() == Bundle.ACTIVE;
     }
 }

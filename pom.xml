@@ -34,7 +34,7 @@
     <description>Runs JUnit tests in an OSGi framework and provides the JUnit libraries</description>
     
     <properties>
-        <junit.version>4.12</junit.version>
+        <junit.version>4.13</junit.version>
         <hamcrest.version>1.3</hamcrest.version>
         <jacoco.version>0.6.2.201302030002</jacoco.version>
     </properties>
@@ -50,10 +50,6 @@
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-jar-plugin</artifactId>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-javadoc-plugin</artifactId>
                 <configuration>
                     <stylesheet>maven</stylesheet>
@@ -61,6 +57,32 @@
                 </configuration>
             </plugin>
         </plugins>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>biz.aQute.bnd</groupId>
+                    <artifactId>bnd-baseline-maven-plugin</artifactId>
+                    <configuration>
+                        <diffpackages>
+                            <diffpackage>!junit.*</diffpackage>
+                            <diffpackage>!org.junit.*</diffpackage>
+                            <diffpackage>*</diffpackage>
+                        </diffpackages>
+                    </configuration>
+                </plugin>
+                <plugin>
+                    <groupId>org.jacoco</groupId>
+                    <artifactId>jacoco-maven-plugin</artifactId>
+                    <configuration>
+                        <excludes>
+                            <exclude>junit/**</exclude>
+                            <exclude>org/junit/**</exclude>
+                            <exclude>org/hamcrest/**</exclude>
+                        </excludes>
+                    </configuration>
+                </plugin>
+            </plugins>
+        </pluginManagement>
     </build>
 
     <profiles>
@@ -116,6 +138,12 @@
     </reporting>
 
     <dependencies>
+        <dependency>
+            <groupId>org.jetbrains</groupId>
+            <artifactId>annotations</artifactId>
+            <version>19.0.0</version>
+            <scope>provided</scope>
+        </dependency>
         <dependency>
             <groupId>org.osgi</groupId>
             <artifactId>org.osgi.annotation.versioning</artifactId>
@@ -193,6 +221,15 @@
             <artifactId>org.apache.sling.commons.osgi</artifactId>
             <version>2.2.2</version>
         </dependency>
+
+        <!-- optional imports for JUnit 5 support -->
+        <dependency>
+            <groupId>org.junit.platform</groupId>
+            <artifactId>junit-platform-launcher</artifactId>
+            <version>1.6.2</version>
+            <scope>provided</scope>
+            <optional>true</optional>
+        </dependency>
         <!-- This bundle exposes the following dependencies at runtime, therefore make those dependencies available in a transitive fashion (i.e. with compile scope). 
              All bundles providing remote unit tests, should rely on the same version of JUnit and Hamcrest.
         -->
@@ -214,16 +251,17 @@
             <version>${hamcrest.version}</version>
             <scope>compile</scope>
         </dependency>
+
         <dependency>
-            <groupId>org.powermock</groupId>
-            <artifactId>powermock-module-junit4</artifactId>
-            <version>2.0.5</version>
+            <groupId>org.junit.vintage</groupId>
+            <artifactId>junit-vintage-engine</artifactId>
+            <version>5.6.2</version>
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>org.powermock</groupId>
-            <artifactId>powermock-api-mockito2</artifactId>
-            <version>2.0.5</version>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-core</artifactId>
+            <version>3.5.7</version>
             <scope>test</scope>
         </dependency>
     </dependencies>

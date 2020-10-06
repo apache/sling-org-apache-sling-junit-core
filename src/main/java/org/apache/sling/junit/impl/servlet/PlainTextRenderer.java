@@ -37,7 +37,7 @@ import org.osgi.service.component.annotations.Component;
 public class PlainTextRenderer extends RunListener implements Renderer, RendererFactory {
     public static final String EXTENSION = "txt";
     private PrintWriter output;
-    
+
     public Renderer createRenderer() { 
         return new PlainTextRenderer();
     }
@@ -122,13 +122,10 @@ public class PlainTextRenderer extends RunListener implements Renderer, Renderer
     }
 
     @Override
-    public void testRunStarted(Description description)
-            throws Exception {
-        super.testRunStarted(description);
-    }
-
-    @Override
-    public void testStarted(Description description) throws Exception {
-        super.testStarted(description);
+    public void testSuiteStarted(Description description) throws Exception {
+        super.testSuiteStarted(description);
+        if (description.getTestClass() != null) {
+            title(3, description.getClassName());
+        }
     }
 }

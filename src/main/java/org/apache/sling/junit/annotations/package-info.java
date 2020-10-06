@@ -16,7 +16,7 @@
  ~ specific language governing permissions and limitations
  ~ under the License.
  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
-@Version("1.0.8")
+@Version("1.1.0")
 package org.apache.sling.junit.annotations;
 
 import org.osgi.annotation.versioning.Version;

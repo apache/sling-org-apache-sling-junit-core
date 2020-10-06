@@ -28,8 +28,9 @@ public class TestContextRunListenerWrapper extends RunListener {
     private final RunListener wrapped;
     private long testStartTime;
     private static final Logger log = LoggerFactory.getLogger(TestContextRunListenerWrapper.class);
-    
-    TestContextRunListenerWrapper(RunListener toWrap) {
+    private boolean createContext;
+
+    public TestContextRunListenerWrapper(RunListener toWrap) {
         wrapped = toWrap;
     }
 
@@ -58,18 +59,40 @@ public class TestContextRunListenerWrapper extends RunListener {
     }
 
     @Override
-    public void testRunFinished(Result result) throws Exception {
-        wrapped.testRunFinished(result);
+    public void testRunStarted(Description description) throws Exception {
+        // Create a test context if we don't have one yet
+        createContext = !SlingTestContextProvider.hasContext();
+        if(createContext) {
+            SlingTestContextProvider.createContext();
+        }
+        wrapped.testRunStarted(description);
     }
 
     @Override
-    public void testRunStarted(Description description) throws Exception {
-        wrapped.testRunStarted(description);
+    public void testRunFinished(Result result) throws Exception {
+        wrapped.testRunFinished(result);
+        if (createContext) {
+            SlingTestContextProvider.deleteContext();
+        }
     }
 
     @Override
     public void testStarted(Description description) throws Exception {
         testStartTime = System.currentTimeMillis();
         wrapped.testStarted(description);
+    }
+
+    @Override
+    public void testSuiteStarted(Description description) throws Exception {
+        // If we have a test context, clear its output metadata
+        if (SlingTestContextProvider.hasContext()) {
+            SlingTestContextProvider.getContext().output().clear();
+        }
+        wrapped.testSuiteStarted(description);
+    }
+
+    @Override
+    public void testSuiteFinished(Description description) throws Exception {
+        wrapped.testSuiteFinished(description);
     }
 }

@@ -16,98 +16,370 @@
  */
 package org.apache.sling.junit.impl;
 
-import static junit.framework.TestCase.assertFalse;
-import static junit.framework.TestCase.assertTrue;
-import static org.powermock.api.mockito.PowerMockito.mock;
-import static org.powermock.api.mockito.PowerMockito.when;
-
-import java.util.HashSet;
-import java.util.Hashtable;
-import java.util.Set;
-import java.util.concurrent.TimeUnit;
-import org.apache.sling.junit.Activator;
+import net.bytebuddy.ByteBuddy;
+import net.bytebuddy.description.type.TypeDescription;
+import net.bytebuddy.dynamic.scaffold.InstrumentedType;
+import net.bytebuddy.implementation.DefaultMethodCall;
+import net.bytebuddy.implementation.Implementation;
+import net.bytebuddy.implementation.MethodCall;
+import net.bytebuddy.implementation.bytecode.ByteCodeAppender;
+import net.bytebuddy.matcher.ElementMatchers;
+import org.apache.sling.junit.Renderer;
+import org.apache.sling.junit.RequestParser;
+import org.apache.sling.junit.TestsManager;
+import org.apache.sling.junit.TestsProvider;
+import org.apache.sling.junit.impl.servlet.PlainTextRenderer;
+import org.apache.sling.junit.sampletests.JUnit4SlingJUnit;
+import org.hamcrest.Matchers;
+import org.jetbrains.annotations.NotNull;
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.mockito.Mockito;
+import org.junit.runner.notification.RunListener;
+import org.junit.vintage.engine.VintageTestEngine;
 import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleContext;
-import org.powermock.api.mockito.PowerMockito;
-import org.powermock.core.classloader.annotations.PrepareForTest;
-import org.powermock.modules.junit4.PowerMockRunner;
-import org.powermock.reflect.Whitebox;
+import org.osgi.framework.Constants;
+import org.osgi.framework.InvalidSyntaxException;
+import org.osgi.framework.ServiceReference;
+import org.osgi.framework.wiring.BundleWiring;
+
+import javax.servlet.http.HttpServletResponse;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.Dictionary;
+import java.util.Enumeration;
+import java.util.HashSet;
+import java.util.Hashtable;
+import java.util.List;
+import java.util.Set;
+import java.util.concurrent.TimeUnit;
+import java.util.function.BiConsumer;
+import java.util.stream.Collectors;
+
+import static java.util.Arrays.asList;
+import static java.util.Collections.emptyList;
+import static java.util.Collections.emptySet;
+import static java.util.Collections.singletonList;
+import static junit.framework.TestCase.assertFalse;
+import static junit.framework.TestCase.assertTrue;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.nullValue;
+import static org.junit.Assert.fail;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 /**
  * Validate waitForSystemStartup method, along with private some implementations.
  */
-@RunWith(PowerMockRunner.class)
-@PrepareForTest({ Activator.class, TestsManagerImpl.class })
 public class TestsManagerImplTest {
 
-  private static final String WAIT_METHOD_NAME = "needToWait";
-  private static final int SYSTEM_STARTUP_SECONDS = 2;
+    private static final int SYSTEM_STARTUP_SECONDS = 2;
 
-  static {
-    // Set a short timeout so our tests can run faster
-    System.setProperty("sling.junit.core.SystemStartupTimeoutSeconds", String.valueOf(SYSTEM_STARTUP_SECONDS));
-  }
+    private Set<Bundle> mockBundles = new HashSet<>();
 
-  /**
-   * case if needToWait should return true, mainly it still have some bundles in the list to wait, and global timeout didn't pass.
-   */
-  @Test
-  public void needToWaitPositiveNotEmptyListNotGloballyTimeout() throws Exception {
-    long startupTimeout = System.currentTimeMillis() + TimeUnit.SECONDS.toMillis(5 * SYSTEM_STARTUP_SECONDS);
-    final Set<Bundle> bundlesToWaitFor = new HashSet<Bundle>();
-    bundlesToWaitFor.add(Mockito.mock(Bundle.class));
-    assertTrue((Boolean)Whitebox.invokeMethod(TestsManagerImpl.class, WAIT_METHOD_NAME, startupTimeout, bundlesToWaitFor));
-  }
+    static {
+        // Set a short timeout so our tests can run faster
+        System.setProperty("sling.junit.core.SystemStartupTimeoutSeconds", String.valueOf(SYSTEM_STARTUP_SECONDS));
+    }
 
-  /**
-   * case if needToWait should return false, when for example it reached the global timeout limit.
-   */
-  @Test
-  public void needToWaitNegativeForstartupTimeout() throws Exception {
-    long lastChange = System.currentTimeMillis() - TimeUnit.SECONDS.toMillis(SYSTEM_STARTUP_SECONDS / 2);
-    long startupTimeout = lastChange - TimeUnit.SECONDS.toMillis(1);
-    assertFalse((Boolean)Whitebox.invokeMethod(TestsManagerImpl.class, WAIT_METHOD_NAME, startupTimeout, new HashSet<Bundle>()));
-  }
+    /**
+     * case if needToWait should return true, mainly it still have some bundles in the list to wait, and global timeout didn't pass.
+     */
+    @Test
+    public void needToWaitPositiveNotEmptyListNotGloballyTimeout() {
+        long startupTimeout = System.currentTimeMillis() + TimeUnit.SECONDS.toMillis(5 * SYSTEM_STARTUP_SECONDS);
+        final Set<Bundle> bundlesToWaitFor = new HashSet<>(singletonList(mock(Bundle.class)));
+        assertTrue(TestsManagerImpl.needToWait(startupTimeout, bundlesToWaitFor));
+    }
 
-  /**
-   * case if needToWait should return false, when for example it reached the global timeout limit.
-   */
-  @Test
-  public void needToWaitNegativeForEmptyList() throws Exception {
-    long lastChange = System.currentTimeMillis() - TimeUnit.SECONDS.toMillis(SYSTEM_STARTUP_SECONDS / 2);
-    long startupTimeout = lastChange + TimeUnit.SECONDS.toMillis(10);
-    assertFalse((Boolean)Whitebox.invokeMethod(TestsManagerImpl.class, WAIT_METHOD_NAME, startupTimeout, new HashSet<Bundle>()));
-  }
+    /**
+     * case if needToWait should return false, when for example it reached the global timeout limit.
+     */
+    @Test
+    public void needToWaitNegativeForstartupTimeout() {
+        long lastChange = System.currentTimeMillis() - TimeUnit.SECONDS.toMillis(SYSTEM_STARTUP_SECONDS / 2);
+        long startupTimeout = lastChange - TimeUnit.SECONDS.toMillis(1);
+        assertFalse(TestsManagerImpl.needToWait(startupTimeout, emptySet()));
+    }
 
-  @Test
-  public void waitForSystemStartupTimeout() {
-    setupBundleContextMock(Bundle.INSTALLED);
-    final long elapsed = TestsManagerImpl.waitForSystemStartup();
-    assertTrue(elapsed > TimeUnit.SECONDS.toMillis(SYSTEM_STARTUP_SECONDS));
-    assertTrue(elapsed < TimeUnit.SECONDS.toMillis(SYSTEM_STARTUP_SECONDS + 1));
-    assertFalse((Boolean) Whitebox.getInternalState(TestsManagerImpl.class, "waitForSystemStartup"));
-  }
+    /**
+     * case if needToWait should return false, when for example it reached the global timeout limit.
+     */
+    @Test
+    public void needToWaitNegativeForEmptyList() {
+        long lastChange = System.currentTimeMillis() - TimeUnit.SECONDS.toMillis(SYSTEM_STARTUP_SECONDS / 2);
+        long startupTimeout = lastChange + TimeUnit.SECONDS.toMillis(10);
+        assertFalse(TestsManagerImpl.needToWait(startupTimeout, emptySet()));
+    }
 
-  @Test
-  public void waitForSystemStartupAllActiveBundles() {
-    setupBundleContextMock(Bundle.ACTIVE);
-    final long elapsed = TestsManagerImpl.waitForSystemStartup();
-    assertTrue(elapsed < TimeUnit.SECONDS.toMillis(SYSTEM_STARTUP_SECONDS));
-    assertFalse((Boolean) Whitebox.getInternalState(TestsManagerImpl.class, "waitForSystemStartup"));
-  }
+    @Test
+    public void waitForSystemStartupTimeout() {
+        BundleContext bundleContext = setupBundleContext(Bundle.INSTALLED);
+        TestsManagerImpl testsManager = new TestsManagerImpl();
+        testsManager.activate(bundleContext);
 
-  private void setupBundleContextMock(final int bundleState) {
-    PowerMockito.mockStatic(Activator.class);
-    BundleContext mockedBundleContext = mock(BundleContext.class);
-    Bundle mockedBundle = mock(Bundle.class);
-    Hashtable<String, String> bundleHeaders = new Hashtable<String, String>();
-    when(mockedBundle.getState()).thenReturn(bundleState);
-    when(mockedBundle.getHeaders()).thenReturn(bundleHeaders);
-    when(mockedBundleContext.getBundles()).thenReturn(new Bundle[] { mockedBundle });
-    when(Activator.getBundleContext()).thenReturn(mockedBundleContext);
-    Whitebox.setInternalState(TestsManagerImpl.class, "waitForSystemStartup", true);
-  }
+        assertFalse(testsManager.isReady());
+
+        final long elapsed = testsManager.waitForSystemStartup();
+        assertTrue(elapsed > TimeUnit.SECONDS.toMillis(SYSTEM_STARTUP_SECONDS));
+        assertTrue(elapsed < TimeUnit.SECONDS.toMillis(SYSTEM_STARTUP_SECONDS + 1));
+        assertTrue(testsManager.isReady());
+
+        // second call is instantaneous
+        assertTrue(10 > testsManager.waitForSystemStartup());
+
+        testsManager.deactivate();
+    }
+
+    @Test
+    public void waitForSystemStartupAllActiveBundles() {
+        BundleContext bundleContext = setupBundleContext(Bundle.ACTIVE);
+        TestsManagerImpl testsManager = new TestsManagerImpl();
+        testsManager.activate(bundleContext);
+
+        assertFalse(testsManager.isReady());
+
+        final long elapsed = testsManager.waitForSystemStartup();
+        assertTrue(elapsed < TimeUnit.SECONDS.toMillis(SYSTEM_STARTUP_SECONDS));
+        assertTrue(testsManager.isReady());
+
+        testsManager.deactivate();
+    }
+
+    @Test
+    public void testDeactivateBeforeActivateIgnored() {
+        try {
+            new TestsManagerImpl().deactivate();
+        } catch (Exception e) {
+            fail("deactivate before activate should be a no-op");
+        }
+    }
+
+    private BundleContext setupBundleContext(int state) {
+        final Bundle bundle = mock(Bundle.class);
+        when(bundle.getSymbolicName()).thenReturn("mocked-bundle");
+        when(bundle.getState()).thenReturn(state);
+        when(bundle.adapt(BundleWiring.class)).thenReturn(mock(BundleWiring.class));
+        when(bundle.getHeaders()).thenReturn(new Hashtable<>());
+
+        final BundleContext bundleContext = mock(BundleContext.class);
+        when(bundleContext.getBundle()).thenReturn(bundle);
+        when(bundleContext.getBundles()).thenAnswer(m -> new Bundle[]{bundle});
+
+        when(bundle.getBundleContext()).thenReturn(bundleContext);
+        return bundleContext;
+    }
+
+
+    @Test
+    public void testGettingTestNamesAndClassesAndExecution() throws Exception {
+
+        final ArrayList<String> allTestClasses = new ArrayList<>();
+
+        for (int i = 0; i < 5; i++) {
+
+            final List<String> testClasses = asList(
+                    "org.apache.sling.junit.testbundle" + i + ".ASlingJUnit",
+                    "org.apache.sling.junit.testbundle" + i + ".impl.ANestedSlingJUnit"
+            );
+
+            allTestClasses.addAll(testClasses);
+
+            final List<String> nonTestClasses = asList(
+                    "org.apache.sling.junit.testbundle" + i + ".NotATest",
+                    "org.apache.sling.junit.testbundle" + i + ".impl.AlsoNotATest",
+                    "org.apache.sling.junit.testbundle" + i + ".CompletelyUnrelated"
+            );
+
+            final List<String> classes = new ArrayList<>();
+            classes.addAll(testClasses);
+            classes.addAll(nonTestClasses);
+            classes.sort(Comparator.naturalOrder());
+
+            createTestBundle(
+                    "test-bundle-" + i,
+                    "org.apache.sling.junit.testbundle" + i + ".*SlingJUnit",
+                    classes
+            );
+        }
+
+        createTestBundle("test-bundle-no-tests", "org.apache.sling.junit.notests.*SlingJUnit", emptyList());
+        createTestBundle("test-bundle-invalid-regexp", "[a-z", emptyList());
+        createTestBundle("test-bundle-no-regexp", null, emptyList());
+        createFragmentBundle("fragment");
+
+        final Bundle junitBundle = createMockBundle("junit-bundle", Bundle.ACTIVE);
+        addBundleWiring(junitBundle, VintageTestEngine.class.getClassLoader());
+        final BundleContext bundleContext = junitBundle.getBundleContext();
+        final BundleTestsProvider bundleTestsProvider =
+                activateAndRegister(bundleContext, TestsProvider.class, new BundleTestsProvider(), BundleTestsProvider::activate);
+        final TestsManagerImpl testsManager =
+                activateAndRegister(bundleContext, TestsManager.class, new TestsManagerImpl(), TestsManagerImpl::activate);
+
+        final RequestParser selector = new RequestParser(null);
+        final Collection<String> testNames = testsManager.getTestNames(selector);
+
+        assertThat("should find all tests", testNames, Matchers.containsInAnyOrder(allTestClasses.toArray(new String[0])));
+
+        for (String testName : testNames) {
+            assertThat("should be able to load class " + testName, testsManager.getTestClass(testName), Matchers.isA(Class.class));
+        }
+
+        try {
+            testsManager.getTestClass("a.class.that.does.not.Exist");
+            fail("should not load non-existant test class");
+        } catch (ClassNotFoundException e) {
+            // expected
+        }
+
+        testsManager.executeTests(createRenderer(), null);
+        testsManager.executeTests(createRenderer(), new RequestParser("org.apache.sling.junit.testbundle0.ASlingJUnit/.html"));
+        testsManager.executeTests(createRenderer(), new RequestParser("org.apache.sling.junit.testbundle0.ASlingJUnit/testSuccessful.html"));
+
+        {
+            final Renderer renderer = createRenderer();
+            final RequestParser requestParser = new RequestParser("org.apache.sling.junit.testbundle0/testSuccessful.html");
+            try {
+                testsManager.executeTests(renderer, requestParser);
+                fail("IllegalStateException expected when selecting method for multiple tests");
+            } catch (IllegalStateException e) {
+                // expected
+            }
+        }
+
+        {
+            final Renderer renderer = createRenderer();
+            final RequestParser requestParser = new RequestParser("no.test.Available.html");
+            try {
+                testsManager.executeTests(renderer, requestParser);
+                fail("NoTestCasesFoundException expected when selecting non-existing test class");
+            } catch (TestsManager.NoTestCasesFoundException e) {
+                // expected
+            }
+        }
+
+        testsManager.deactivate();
+        bundleTestsProvider.deactivate();
+    }
+
+    public void createFragmentBundle(String symbolicName) throws IOException {
+        final Bundle bundle = createMockBundle(symbolicName, Bundle.ACTIVE);
+
+        final Dictionary<String, String> fragmentHeaders = bundle.getHeaders();
+        fragmentHeaders.put(BundleTestsProvider.SLING_TEST_REGEXP, "system.bundle.*SlingJUnit");
+        fragmentHeaders.put(Constants.FRAGMENT_HOST, "system.bundle");
+
+        when(bundle.findEntries("", "*.class", true))
+                .thenAnswer(m -> classesAsResourceEnumeration(singletonList("system.bundle.FragmentSlingJUnit")));
+
+        addBundleWiring(bundle, emptyMockClassloader());
+    }
+
+    private <T> T activateAndRegister(BundleContext bundleContext, Class<? super T> interfaze, T service, BiConsumer<T, BundleContext> activator)
+            throws InvalidSyntaxException {
+        activator.accept(service, bundleContext);
+        registerService(bundleContext, service, interfaze);
+        return service;
+    }
+
+    private static Renderer createRenderer() throws IOException {
+        final PlainTextRenderer renderer = new PlainTextRenderer() {
+            @Override
+            public RunListener getRunListener() {
+                return super.getRunListener();
+            }
+        };
+        final HttpServletResponse response = mock(HttpServletResponse.class);
+        when(response.getWriter()).thenReturn(mock(PrintWriter.class));
+        renderer.setup(response, "Test");
+        return renderer;
+    }
+
+    @NotNull
+    private Bundle createMockBundle(String symbolicName, int state) {
+        final Bundle bundle = mock(Bundle.class);
+        when(bundle.getSymbolicName()).thenReturn(symbolicName);
+        when(bundle.getState()).thenReturn(state);
+        when(bundle.getHeaders()).thenReturn(new Hashtable<>());
+
+        final BundleContext bundleContext = mock(BundleContext.class);
+        when(bundleContext.getBundle()).thenReturn(bundle);
+
+        when(bundle.getBundleContext()).thenReturn(bundleContext);
+
+        when(bundleContext.getBundles())
+                .thenAnswer(m -> mockBundles.toArray(new Bundle[0]));
+
+        mockBundles.add(bundle);
+
+        return bundle;
+    }
+
+    private void createTestBundle(String symbolicName, String testRegexp, Collection<String> classes)
+            throws ClassNotFoundException, IOException {
+        final Bundle bundle = createMockBundle(symbolicName, Bundle.ACTIVE);
+
+        when(bundle.findEntries("", "*.class", true)).thenAnswer(m -> classesAsResourceEnumeration(classes));
+
+        // we just return the Object.class instead of a real class - we're not doing anything with it
+        when(bundle.loadClass(argThat(classes::contains))).then(m -> JUnit4SlingJUnit.class);
+        assertThat("cannot load just any class", bundle.loadClass("any.class.Name"), nullValue());
+
+        if (testRegexp != null) {
+            bundle.getHeaders().put(BundleTestsProvider.SLING_TEST_REGEXP, testRegexp);
+        }
+
+        addBundleWiring(bundle, emptyMockClassloader());
+    }
+
+    @NotNull
+    private static ClassLoader emptyMockClassloader() throws IOException {
+        final ClassLoader classLoader = mock(ClassLoader.class);
+        when(classLoader.getResources(any())).thenAnswer(m -> Collections.emptyEnumeration());
+        return classLoader;
+    }
+
+    private static <T> void registerService(BundleContext bundleContext, T service, Class<? super T> interfaze) throws InvalidSyntaxException {
+        @SuppressWarnings("unchecked") final ServiceReference<T> serviceReference = (ServiceReference<T>) mock(ServiceReference.class);
+        final Set<ServiceReference<T>> references = Collections.singleton(serviceReference);
+        when(bundleContext.getServiceReferences(interfaze, null)).thenAnswer(m -> references);
+        when(bundleContext.getServiceReferences(interfaze.getName(), null))
+                .thenAnswer(m -> references.toArray(new ServiceReference[0]));
+        when(bundleContext.getServiceReference(interfaze)).thenAnswer(m -> serviceReference);
+        when(bundleContext.getServiceReference(interfaze.getName())).thenAnswer(m -> serviceReference);
+        when(bundleContext.getService(serviceReference)).thenReturn(service);
+    }
+
+    private static void addBundleWiring(Bundle bundle, ClassLoader classLoader) {
+        final BundleWiring bundleWiring = mock(BundleWiring.class);
+        when(bundleWiring.getClassLoader()).thenReturn(classLoader);
+        when(bundle.adapt(BundleWiring.class)).thenReturn(bundleWiring);
+    }
+
+    private static Enumeration<URL> classesAsResourceEnumeration(Collection<String> classes) {
+        final List<URL> resources = classes.stream()
+                .map(clazz -> '/' + clazz.replace('.', '/') + ".class")
+                .map(file -> {
+                    try {
+                        // In Apache Felix URLs look like this:
+                        //     bundle://<random-bundle-identifier>:0/org/path/to/ClassName.class
+                        // However, the "bundle" protocol causes an exception
+                        // and in any case, only the URL's file part is used.
+                        return new URL("file://pseudo:80" + file);
+                    } catch (MalformedURLException e) {
+                        fail(e.getMessage());
+                    }
+                    // cannot be reached because "fail()" throws an AssertionError
+                    return null;
+                })
+                .collect(Collectors.toList());
+        return Collections.enumeration(resources);
+    }
 }

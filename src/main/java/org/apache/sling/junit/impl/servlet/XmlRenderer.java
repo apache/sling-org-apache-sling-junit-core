@@ -250,6 +250,14 @@ public class XmlRenderer extends RunListener implements Renderer, RendererFactor
 	}
 
 	@Override
+	public void testSuiteStarted(Description description) throws Exception {
+		super.testSuiteStarted(description);
+		if (description.getTestClass() != null) {
+			title(3, description.getClassName());
+		}
+	}
+
+	@Override
 	public void testStarted(Description description) throws Exception {
 		super.testStarted(description);
 		tests.put(description, new Long(System.currentTimeMillis()));

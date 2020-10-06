@@ -168,14 +168,6 @@ public class HtmlRenderer extends RunListener implements Renderer,RendererFactor
     @Override
     public void testRunFinished(Result result) throws Exception {
         super.testRunFinished(result);
-        String cssClass = "testRun ";
-        if(result.getFailureCount() > 0) {
-            cssClass += "failure";
-        } else if(result.getIgnoreCount() > 0) {
-            cssClass += "ignored";
-        } else {
-            cssClass += "success";
-        }
 
         output.println("<p class='testRun'>");
         output.print("TEST RUN FINISHED: ");
@@ -188,9 +180,11 @@ public class HtmlRenderer extends RunListener implements Renderer,RendererFactor
     }
 
     @Override
-    public void testRunStarted(Description description)
-            throws Exception {
-        super.testRunStarted(description);
+    public void testSuiteStarted(Description description) throws Exception {
+        super.testSuiteStarted(description);
+        if (description.getTestClass() != null) {
+            title(3, description.getClassName());
+        }
     }
 
     @Override

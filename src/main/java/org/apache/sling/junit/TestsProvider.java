@@ -25,8 +25,11 @@ public interface TestsProvider {
     /**
      * Return this service's PID, client might use it later to instantiate a specific test.
      *
-     * @return the service pid
+     * @return the service pid or null
+     *
+     * @deprecated No longer used.
      */
+    @Deprecated
     String getServicePid();
 
     /**
@@ -49,7 +52,14 @@ public interface TestsProvider {
     /**
      * Return the timestamp at which our list of tests was last modified
      *
-     * @return the last modified date of the tests list as a timestamp
+     * @return the last modified date of the tests list as a timestamp or -1 if not supported
+     *
+     * @deprecated No longer used. {@code TestManager} always gets the latest tests
+     *  from the {@code TestsProvider} instances. Any performance issues need to be
+     *  addressed inside the {@code TestsProvider} implementation, e.g. by
+     *  caching.
      */
+    @Deprecated
     long lastModified();
+
 }
