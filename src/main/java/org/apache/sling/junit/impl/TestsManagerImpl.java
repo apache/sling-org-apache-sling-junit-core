@@ -94,7 +94,7 @@ public class TestsManagerImpl implements TestsManager {
         final TestsProvider provider = getTestProviders()
                 .filter(p -> p.getTestNames().contains(testName))
                 .findFirst()
-                .orElseThrow(() -> new IllegalStateException("No TestsProvider found for test '" + testName + "'"));
+                .orElseThrow(() -> new ClassNotFoundException("No TestsProvider found for test '" + testName + "'"));
 
         log.debug("Using provider {} to create test class {}", provider, testName);
         return provider.createTestClass(testName);
@@ -163,8 +163,7 @@ public class TestsManagerImpl implements TestsManager {
         if (waitForSystemStartup) {
             waitForSystemStartup = false;
             final Set<Bundle> bundlesToWaitFor = Stream.of(bundleContext.getBundles())
-                    .filter(not(TestsManagerImpl::isActive))
-                    .filter(not(TestsManagerImpl::isFragment))
+                    .filter(not(TestsManagerImpl::isActive).and(not(TestsManagerImpl::isFragment)))
                     .collect(Collectors.toSet());
 
             // wait max inactivityTimeout after the last bundle became active before giving up

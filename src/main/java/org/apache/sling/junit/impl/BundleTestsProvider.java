@@ -72,7 +72,7 @@ public class BundleTestsProvider extends AbstractTestsProvider {
                 .filter(entry -> entry.getValue().contains(testName))
                 .map(Map.Entry::getKey)
                 .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("No Bundle found that supplies test class " + testName));
+                .orElseThrow(() -> new ClassNotFoundException("No Bundle found that supplies test class " + testName));
         return bundle.loadClass(testName);
     }
 
