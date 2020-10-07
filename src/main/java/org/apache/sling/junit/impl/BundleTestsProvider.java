@@ -18,16 +18,18 @@ package org.apache.sling.junit.impl;
 
 import java.net.URL;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Enumeration;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Predicate;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 import java.util.stream.Collectors;
 
-import org.jetbrains.annotations.Nullable;
+import org.jetbrains.annotations.NotNull;
 import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.BundleEvent;
@@ -88,54 +90,55 @@ public class BundleTestsProvider extends AbstractTestsProvider {
         @Override
         public Set<String> addingBundle(Bundle bundle, BundleEvent event) {
             super.addingBundle(bundle, event);
-            return getTestClasses(bundle);
-        }
-    }
-
-    /** Get test classes that bundle b provides (as done in Felix/Sigil) */
-    @Nullable
-    private static Set<String> getTestClasses(Bundle bundle) {
-        final String headerValue = getSlingTestRegexp(bundle);
-        if (headerValue == null) {
-            LOG.debug("Bundle '{}' does not have {} header, not looking for test classes",
-                    bundle.getSymbolicName(), SLING_TEST_REGEXP);
-            return null;
+            final Set<String> testClasses = getTestClasses(bundle);
+            return testClasses.isEmpty() ? null : testClasses;
         }
 
-        Pattern testClassRegexp;
-        try {
-            testClassRegexp = Pattern.compile(headerValue);
-        } catch (PatternSyntaxException pse) {
-            LOG.warn("Bundle '{}' has an invalid pattern for {} header, ignored: '{}'",
-                    bundle.getSymbolicName(), SLING_TEST_REGEXP, headerValue);
-            return null;
-        }
-
-        Enumeration<URL> classUrls = bundle.findEntries("", "*.class", true);
-        final Set<String> result = new LinkedHashSet<>();
-        while (classUrls.hasMoreElements()) {
-            URL url = classUrls.nextElement();
-            final String name = toClassName(url);
-            if(testClassRegexp.matcher(name).matches()) {
-                result.add(name);
-            } else {
-                LOG.debug("Class '{}' does not match {} pattern '{}' of bundle '{}', ignored",
-                        name, SLING_TEST_REGEXP, testClassRegexp, bundle.getSymbolicName());
+        /** Get test classes that bundle b provides (as done in Felix/Sigil) */
+        @NotNull
+        private static Set<String> getTestClasses(Bundle bundle) {
+            final String headerValue = getSlingTestRegexp(bundle);
+            if (headerValue == null) {
+                LOG.debug("Bundle '{}' does not have {} header, not looking for test classes",
+                        bundle.getSymbolicName(), SLING_TEST_REGEXP);
+                return Collections.emptySet();
             }
+
+            Predicate<String> isTestClass;
+            try {
+                isTestClass = Pattern.compile(headerValue).asPredicate();
+            } catch (PatternSyntaxException pse) {
+                LOG.warn("Bundle '{}' has an invalid pattern for {} header, ignored: '{}'",
+                        bundle.getSymbolicName(), SLING_TEST_REGEXP, headerValue);
+                return Collections.emptySet();
+            }
+
+            Enumeration<URL> classUrls = bundle.findEntries("", "*.class", true);
+            final Set<String> result = new LinkedHashSet<>();
+            while (classUrls.hasMoreElements()) {
+                URL url = classUrls.nextElement();
+                final String name = toClassName(url);
+                if(isTestClass.test(name)) {
+                    result.add(name);
+                } else {
+                    LOG.debug("Class '{}' does not match {} pattern '{}' of bundle '{}', ignored",
+                            name, SLING_TEST_REGEXP, headerValue, bundle.getSymbolicName());
+                }
+            }
+
+            LOG.info("{} test classes found in bundle '{}'", result.size(), bundle.getSymbolicName());
+            return result;
         }
 
-        LOG.info("{} test classes found in bundle '{}'", result.size(), bundle.getSymbolicName());
-        return result.isEmpty() ? null : result;
-    }
+        private static String getSlingTestRegexp(Bundle bundle) {
+            return bundle.getHeaders().get(SLING_TEST_REGEXP);
+        }
 
-    private static String getSlingTestRegexp(Bundle bundle) {
-        return bundle.getHeaders().get(SLING_TEST_REGEXP);
-    }
-
-    /** Convert class URL to class name */
-    private static String toClassName(URL url) {
-        final String f = url.getFile();
-        final String cn = f.substring(1, f.length() - ".class".length());
-        return cn.replace('/', '.');
+        /** Convert class URL to class name */
+        private static String toClassName(URL url) {
+            final String f = url.getFile();
+            final String cn = f.substring(1, f.length() - ".class".length());
+            return cn.replace('/', '.');
+        }
     }
 }

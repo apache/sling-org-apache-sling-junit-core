@@ -32,12 +32,10 @@ import org.slf4j.LoggerFactory;
 import java.io.Closeable;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.IdentityHashMap;
+import java.util.HashSet;
 import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
 
 public class TestEngineTracker implements Closeable {
 
@@ -81,11 +79,14 @@ public class TestEngineTracker implements Closeable {
 
         @NotNull
         private static Set<TestEngine> getTestEnginesForBundle(Bundle bundle) {
-            final Iterable<TestEngine> testEngines =
-                    ServiceLoader.load(TestEngine.class, bundle.adapt(BundleWiring.class).getClassLoader());
-            return StreamSupport.stream(testEngines.spliterator(), false)
-                    .peek(testEngine -> LOG.info("Found TestEngine '{}' in bundle '{}'", testEngine.getId(), bundle.getSymbolicName()))
-                    .collect(Collectors.toCollection(() -> Collections.newSetFromMap(new IdentityHashMap<>())));
+            final Set<TestEngine> testEngines = new HashSet<>();
+            ServiceLoader
+                    .load(TestEngine.class, bundle.adapt(BundleWiring.class).getClassLoader())
+                    .forEach(testEngine -> {
+                        LOG.info("Found TestEngine '{}' in bundle '{}'", testEngine.getId(), bundle.getSymbolicName());
+                        testEngines.add(testEngine);
+                    });
+            return testEngines;
         }
     }
 }

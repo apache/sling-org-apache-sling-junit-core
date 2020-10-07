@@ -33,11 +33,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Collection;
-import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -49,7 +48,7 @@ public class TestsManagerImpl implements TestsManager {
     // Global Timeout up to which it stop waiting for bundles to be all active, default to 40 seconds.
     public static final String PROP_STARTUP_TIMEOUT_SECONDS = "sling.junit.core.SystemStartupTimeoutSeconds";
 
-    private static final int startupTimeoutSeconds = Integer.parseInt(System.getProperty(PROP_STARTUP_TIMEOUT_SECONDS, "40"));
+    private final int startupTimeoutSeconds = Integer.parseInt(System.getProperty(PROP_STARTUP_TIMEOUT_SECONDS, "40"));
 
     private volatile boolean waitForSystemStartup = true;
 
@@ -153,6 +152,7 @@ public class TestsManagerImpl implements TestsManager {
 
     @Override
     public void clearCaches() {
+        // deprecated method kept for backwards compatibility
     }
 
     /** Wait for all bundles to be started
@@ -162,12 +162,10 @@ public class TestsManagerImpl implements TestsManager {
         long elapsedMsec = -1;
         if (waitForSystemStartup) {
             waitForSystemStartup = false;
-            final Set<Bundle> bundlesToWaitFor = new HashSet<Bundle>();
-            for (final Bundle bundle : bundleContext.getBundles()) {
-                if (bundle.getState() != Bundle.ACTIVE && !isFragment(bundle)) {
-                    bundlesToWaitFor.add(bundle);
-                }
-            }
+            final Set<Bundle> bundlesToWaitFor = Stream.of(bundleContext.getBundles())
+                    .filter(not(TestsManagerImpl::isActive))
+                    .filter(not(TestsManagerImpl::isFragment))
+                    .collect(Collectors.toSet());
 
             // wait max inactivityTimeout after the last bundle became active before giving up
             final long startTime = System.currentTimeMillis();
@@ -179,14 +177,7 @@ public class TestsManagerImpl implements TestsManager {
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                 }
-                Iterator<Bundle> bundles = bundlesToWaitFor.iterator();
-                while (bundles.hasNext()) {
-                    Bundle bundle = bundles.next();
-                    if (bundle.getState() == Bundle.ACTIVE) {
-                        bundles.remove();
-                        log.debug("Bundle {} is now active", bundle.getSymbolicName());
-                    }
-                }
+                bundlesToWaitFor.removeIf(TestsManagerImpl::isActive);
             }
 
             elapsedMsec = System.currentTimeMillis() - startTime;
@@ -207,7 +198,15 @@ public class TestsManagerImpl implements TestsManager {
         return startupTimeout > System.currentTimeMillis() && !bundlesToWaitFor.isEmpty();
     }
 
+    private static <T> Predicate<T> not(Predicate<T> predicate) {
+        return predicate.negate();
+    }
+
     private static boolean isFragment(final Bundle bundle) {
         return bundle.getHeaders().get(Constants.FRAGMENT_HOST) != null;
+    }
+
+    private static boolean isActive(Bundle bundle) {
+        return bundle.getState() == Bundle.ACTIVE;
     }
 }
