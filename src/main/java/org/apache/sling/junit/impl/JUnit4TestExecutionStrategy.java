@@ -19,18 +19,12 @@
 package org.apache.sling.junit.impl;
 
 import org.apache.sling.junit.Renderer;
-import org.apache.sling.junit.SlingTestContextProvider;
 import org.apache.sling.junit.TestSelector;
 import org.junit.runner.JUnitCore;
 import org.junit.runner.Request;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.util.Collection;
+import org.junit.runner.notification.RunListener;
 
 public class JUnit4TestExecutionStrategy implements TestExecutionStrategy {
-
-    private static final Logger LOG = LoggerFactory.getLogger(JUnit4TestExecutionStrategy.class);
 
     private final TestsManagerImpl testsManager;
 
@@ -39,26 +33,11 @@ public class JUnit4TestExecutionStrategy implements TestExecutionStrategy {
     }
 
     @Override
-    public void execute(Renderer renderer, Collection<String> testNames, TestSelector selector) throws Exception {
+    public void execute(Renderer renderer, TestSelector selector, RunListener runListener) throws Exception {
         final JUnitCore junit = new JUnitCore();
-        junit.addListener(new TestContextRunListenerWrapper(renderer.getRunListener()));
-        for(String className : testNames) {
-            renderer.title(3, className);
-
-            // If we have a test context, clear its output metadata
-            if(SlingTestContextProvider.hasContext()) {
-                SlingTestContextProvider.getContext().output().clear();
-            }
-
-            final String testMethodName = selector == null ? null : selector.getSelectedTestMethodName();
-            if(testMethodName != null && testMethodName.length() > 0) {
-                LOG.debug("Running test method {} from test class {}", testMethodName, className);
-                junit.run(Request.method(testsManager.getTestClass(className), testMethodName));
-            } else {
-                LOG.debug("Running test class {}", className);
-                junit.run(testsManager.getTestClass(className));
-            }
-        }
+        junit.addListener(runListener);
+        final Request request = testsManager.createTestRequest(selector, Request::method, Request::classes);
+        junit.run(request);
     }
 
     @Override

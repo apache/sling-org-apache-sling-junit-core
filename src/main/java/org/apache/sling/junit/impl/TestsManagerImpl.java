@@ -17,11 +17,13 @@
 package org.apache.sling.junit.impl;
 
 import org.apache.sling.junit.Renderer;
-import org.apache.sling.junit.SlingTestContextProvider;
+import org.apache.sling.junit.RequestParser;
 import org.apache.sling.junit.TestSelector;
 import org.apache.sling.junit.TestsManager;
 import org.apache.sling.junit.TestsProvider;
 import org.apache.sling.junit.impl.servlet.junit5.JUnit5TestExecutionStrategy;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.Constants;
@@ -32,10 +34,13 @@ import org.osgi.util.tracker.ServiceTracker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.function.BiFunction;
+import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -89,8 +94,9 @@ public class TestsManagerImpl implements TestsManager {
 
         bundleContext = null;
     }
-    
-    public Class<?> getTestClass(String testName) throws ClassNotFoundException {
+
+    @NotNull
+    public Class<?> getTestClass(@NotNull String testName) throws ClassNotFoundException {
         final TestsProvider provider = getTestProviders()
                 .filter(p -> p.getTestNames().contains(testName))
                 .findFirst()
@@ -101,10 +107,11 @@ public class TestsManagerImpl implements TestsManager {
     }
 
     @Override
-    public Collection<String> getTestNames(TestSelector selector) {
+    public Collection<String> getTestNames(@Nullable TestSelector selector) {
         final List<String> tests = getTestProviders()
                 .map(TestsProvider::getTestNames)
                 .flatMap(Collection::stream)
+                .sorted()
                 .collect(Collectors.toList());
         final int allTestsCount = tests.size();
         if(selector == null) {
@@ -121,27 +128,61 @@ public class TestsManagerImpl implements TestsManager {
     }
 
     @Override
-    public void executeTests(Collection<String> testNames, Renderer renderer, TestSelector selector) throws Exception {
-        renderer.title(2, "Running tests");
-        waitForSystemStartup();
-
-        // Create a test context if we don't have one yet
-        final boolean createContext =  !SlingTestContextProvider.hasContext();
-        if(createContext) {
-            SlingTestContextProvider.createContext();
-        }
-
-        try {
-            executionStrategy.execute(renderer, testNames, selector);
-        } finally {
-            if(createContext) {
-                SlingTestContextProvider.deleteContext();
-            }
+    public void executeTests(@Nullable Collection<String> testNames, @NotNull Renderer renderer, @Nullable TestSelector selector) throws Exception {
+        if (selector != null) {
+            executeTests(renderer, selector);
+        } else if (testNames != null){
+            executeTests(renderer, new RequestParser(null) {
+                @Override
+                public boolean acceptTestName(String testName) {
+                    return testNames.contains(testName);
+                }
+            });
+        } else {
+            executeTests(renderer, null);
         }
     }
 
     @Override
-    public void listTests(Collection<String> testNames, Renderer renderer) {
+    public void executeTests(@NotNull Renderer renderer, @Nullable TestSelector selector) throws Exception {
+        renderer.title(2, "Running tests");
+        waitForSystemStartup();
+        executionStrategy.execute(renderer, selector, new TestContextRunListenerWrapper(renderer.getRunListener()));
+    }
+
+    public <T> T createTestRequest(TestSelector selector,
+                            BiFunction<Class<?>, String, T> methodRequestFactory,
+                            Function<Class<?>[], T> classesRequestFactory) throws ClassNotFoundException {
+        final T request;
+        final Collection<String> testNames = getTestNames(selector);
+        if (testNames.isEmpty()) {
+            throw new NoTestCasesFoundException();
+        }
+        final String testMethodName = selector == null ? null : selector.getSelectedTestMethodName();
+        if (testNames.size() == 1 && isNotBlank(testMethodName)) {
+            final String className = testNames.iterator().next();
+            log.debug("Running test method {} from test class {}", testMethodName, className);
+            request = methodRequestFactory.apply(getTestClass(className), testMethodName);
+        } else {
+            if (isNotBlank(testMethodName)) {
+                throw new IllegalStateException("A test method name is only supported for a single test class");
+            }
+            final List<Class<?>> testClasses = new ArrayList<>();
+            for (String className : testNames) {
+                log.debug("Running test class {}", className);
+                testClasses.add(getTestClass(className));
+            }
+            request = classesRequestFactory.apply(testClasses.toArray(new Class[0]));
+        }
+        return request;
+    }
+
+    private static boolean isNotBlank(String str) {
+        return str != null && str.length() > 0;
+    }
+
+    @Override
+    public void listTests(@NotNull Collection<String> testNames, @NotNull Renderer renderer) {
         renderer.title(2, "Test classes");
         final String note = "The test set can be restricted using partial test names"
                 + " as a suffix to this URL"

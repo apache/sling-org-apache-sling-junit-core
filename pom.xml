@@ -50,28 +50,39 @@
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-jar-plugin</artifactId>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-javadoc-plugin</artifactId>
                 <configuration>
                     <stylesheet>maven</stylesheet>
                     <excludePackageNames>org.apache.sling.junit.impl;org.apache.sling.junit.impl.*</excludePackageNames>
                 </configuration>
             </plugin>
-            <plugin>
-                <groupId>biz.aQute.bnd</groupId>
-                <artifactId>bnd-baseline-maven-plugin</artifactId>
-                <configuration>
-                    <diffpackages>
-                        <diffpackage>!junit.*</diffpackage>
-                        <diffpackage>!org.junit.*</diffpackage>
-                        <diffpackage>*</diffpackage>
-                    </diffpackages>
-                </configuration>
-            </plugin>
         </plugins>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>biz.aQute.bnd</groupId>
+                    <artifactId>bnd-baseline-maven-plugin</artifactId>
+                    <configuration>
+                        <diffpackages>
+                            <diffpackage>!junit.*</diffpackage>
+                            <diffpackage>!org.junit.*</diffpackage>
+                            <diffpackage>*</diffpackage>
+                        </diffpackages>
+                    </configuration>
+                </plugin>
+                <plugin>
+                    <groupId>org.jacoco</groupId>
+                    <artifactId>jacoco-maven-plugin</artifactId>
+                    <configuration>
+                        <excludes>
+                            <exclude>junit/**</exclude>
+                            <exclude>org/junit/**</exclude>
+                            <exclude>org/hamcrest/**</exclude>
+                        </excludes>
+                    </configuration>
+                </plugin>
+            </plugins>
+        </pluginManagement>
     </build>
 
     <profiles>

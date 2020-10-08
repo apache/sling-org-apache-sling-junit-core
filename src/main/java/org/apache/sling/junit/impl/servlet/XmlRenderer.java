@@ -25,6 +25,7 @@ import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Hashtable;
+import java.util.Objects;
 
 import javax.servlet.http.HttpServletResponse;
 import javax.xml.parsers.DocumentBuilder;
@@ -247,6 +248,14 @@ public class XmlRenderer extends RunListener implements Renderer, RendererFactor
 		Element propsElement = doc.createElement("properties");
 		rootElement.appendChild(propsElement);        
 
+	}
+
+	@Override
+	public void testSuiteStarted(Description description) throws Exception {
+		super.testSuiteStarted(description);
+		if (description.getTestClass() != null) {
+			title(3, description.getClassName());
+		}
 	}
 
 	@Override

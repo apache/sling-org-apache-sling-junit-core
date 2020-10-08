@@ -29,6 +29,7 @@ import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 import java.util.stream.Collectors;
 
+import org.apache.sling.junit.TestsProvider;
 import org.jetbrains.annotations.NotNull;
 import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleContext;
@@ -44,7 +45,7 @@ import org.slf4j.LoggerFactory;
  *  that have a Sling-Test-Regexp header and corresponding
  *  exported classes.
  */
-@Component
+@Component(service = TestsProvider.class)
 public class BundleTestsProvider extends AbstractTestsProvider {
 
     private static final Logger LOG = LoggerFactory.getLogger(BundleTestsProvider.class);

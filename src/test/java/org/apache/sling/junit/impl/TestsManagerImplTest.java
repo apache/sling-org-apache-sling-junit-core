@@ -230,7 +230,7 @@ public class TestsManagerImplTest {
             // expected
         }
 
-        testsManager.executeTests(testNames, createRenderer(), selector);
+        testsManager.executeTests(createRenderer(), selector);
 
         testsManager.deactivate();
         bundleTestsProvider.deactivate();

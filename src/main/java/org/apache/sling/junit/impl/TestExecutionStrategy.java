@@ -20,13 +20,13 @@ package org.apache.sling.junit.impl;
 
 import org.apache.sling.junit.Renderer;
 import org.apache.sling.junit.TestSelector;
+import org.junit.runner.notification.RunListener;
 
 import java.io.Closeable;
-import java.util.Collection;
 
 public interface TestExecutionStrategy extends Closeable {
 
-    void execute(Renderer renderer, Collection<String> testNames, TestSelector selector) throws Exception;
+    void execute(Renderer renderer, TestSelector selector, RunListener runListener) throws Exception;
 
     @Override
     void close();

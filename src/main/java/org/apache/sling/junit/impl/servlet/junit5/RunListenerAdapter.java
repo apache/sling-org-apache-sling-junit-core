@@ -47,6 +47,11 @@ public class RunListenerAdapter implements TestExecutionListener {
     @Override
     public void testPlanExecutionStarted(TestPlan testPlan) {
         summarizer.testPlanExecutionStarted(testPlan);
+        try {
+            runListener.testRunStarted(Description.createSuiteDescription("classes"));
+        } catch (Exception exception) {
+            throw new RuntimeException(exception);
+        }
     }
 
     @Override
@@ -70,14 +75,16 @@ public class RunListenerAdapter implements TestExecutionListener {
         if (testIdentifier.isTest()) {
             withDescription(testIdentifier, runListener::testStarted);
         } else {
-            withDescription(testIdentifier, runListener::testRunStarted);
+            withDescription(testIdentifier, runListener::testSuiteStarted);
         }
     }
 
     @Override
     public void executionSkipped(TestIdentifier testIdentifier, String reason) {
         summarizer.executionSkipped(testIdentifier, reason);
-        withDescription(testIdentifier, runListener::testIgnored);
+        if (testIdentifier.isTest()) {
+            withDescription(testIdentifier, runListener::testIgnored);
+        }
     }
 
     @Override
@@ -92,6 +99,9 @@ public class RunListenerAdapter implements TestExecutionListener {
                 }
             }
             withDescription(testIdentifier, runListener::testFinished);
+        } else {
+            withDescription(testIdentifier, runListener::testSuiteFinished);
+
         }
     }
 

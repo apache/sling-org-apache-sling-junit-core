@@ -19,9 +19,7 @@ package org.apache.sling.junit.impl.servlet;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import java.util.Collection;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
@@ -32,6 +30,7 @@ import org.apache.sling.junit.RendererSelector;
 import org.apache.sling.junit.RequestParser;
 import org.apache.sling.junit.TestSelector;
 import org.apache.sling.junit.TestsManager;
+import org.apache.sling.junit.impl.TestsManagerImpl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -50,15 +49,6 @@ public class ServletProcessor {
             final RendererSelector rendererSelector) {
         this.testsManager = testsManager;
         this.rendererSelector = rendererSelector;
-    }
-
-    /** Return sorted list of available tests
-     * @param selector optionally select only names that match this selector
-     */
-    private List<String> getTestNames(TestSelector selector) {
-        final List<String> result = new ArrayList<>(testsManager.getTestNames(selector));
-        Collections.sort(result);
-        return result;
     }
 
     private void sendCss(HttpServletResponse response) throws IOException {
@@ -101,8 +91,8 @@ public class ServletProcessor {
         }
 
         final TestSelector selector = getTestSelector(request);
-        final List<String> testNames = getTestNames(selector);
-        
+        final Collection<String> testNames = testsManager.getTestNames(selector);
+
         // 404 if no tests found
         if(testNames.isEmpty()) {
             final String msg = 
@@ -145,15 +135,14 @@ public class ServletProcessor {
         }
         renderer.setup(response, getClass().getSimpleName());
 
-        final List<String> testNames = getTestNames(selector);
-        if(testNames.isEmpty()) {
+        try {
+            testsManager.executeTests(renderer, selector);
+        } catch(TestsManager.NoTestCasesFoundException e) {
             response.sendError(
                     HttpServletResponse.SC_NOT_FOUND,
                     "No tests found for " + selector);
-        }
-        try {
-            testsManager.executeTests(testNames, renderer, selector);
-        } catch(Exception e) {
+            return;
+        } catch (Exception e) {
             throw new ServletException(e);
         }
 

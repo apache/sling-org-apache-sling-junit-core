@@ -18,6 +18,8 @@ package org.apache.sling.junit;
 
 import java.util.Collection;
 
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.osgi.annotation.versioning.ProviderType;
 
 /**
@@ -31,7 +33,7 @@ public interface TestsManager {
      * @param selector if null, returns all available tests.
      * @return the name of the tests
      */
-    Collection<String> getTestNames(TestSelector selector);
+    Collection<String> getTestNames(@Nullable TestSelector selector);
 
     /**
      * Instantiate test class for specified test
@@ -40,7 +42,7 @@ public interface TestsManager {
      * @return an instance of the class
      * @throws ClassNotFoundException if a class for {@code testName} cannot be found
      */
-    Class<?> getTestClass(String testName) throws ClassNotFoundException;
+    Class<?> getTestClass(@NotNull String testName) throws ClassNotFoundException;
 
     /**
      * List tests using supplied Renderer - does NOT call setup or cleanup on renderer.
@@ -49,7 +51,17 @@ public interface TestsManager {
      * @param renderer  the renderer to use
      * @throws Exception if any error occurs
      */
-    void listTests(Collection<String> testNames, Renderer renderer) throws Exception;
+    void listTests(@NotNull Collection<String> testNames, @NotNull Renderer renderer) throws Exception;
+
+    /**
+     * Execute tests and report results using supplied Renderer - does NOT call setup or cleanup on renderer.
+     *
+     * @param renderer  the renderer to use for the reporting
+     * @param selector  the selector used to select tests and test methods; all tests are executed if this is null
+     * @throws NoTestCasesFoundException if no tests matching the selector are available
+     * @throws Exception if an error occurs
+     */
+    void executeTests(@NotNull Renderer renderer, @Nullable TestSelector selector) throws NoTestCasesFoundException, Exception;
 
     /**
      * Execute tests and report results using supplied Renderer - does NOT call setup or cleanup on renderer.
@@ -58,8 +70,12 @@ public interface TestsManager {
      * @param renderer  the renderer to use for the reporting
      * @param selector  the selector used to select tests and test methods (it can be {@code null})
      * @throws Exception if any error occurs
+     *
+     * @deprecated use {@link #executeTests(Renderer, TestSelector)} instead
      */
-    void executeTests(Collection<String> testNames, Renderer renderer, TestSelector selector) throws Exception;
+    @Deprecated
+    void executeTests(@Nullable Collection<String> testNames, @NotNull Renderer renderer, @Nullable TestSelector selector)
+            throws Exception;
 
     /**
      * Clear our internal caches. Useful in automated testing, to make sure changes introduced by recent uploads or configuration or bundles
@@ -69,4 +85,6 @@ public interface TestsManager {
      */
     @Deprecated
     void clearCaches();
+
+    class NoTestCasesFoundException extends RuntimeException {}
 }

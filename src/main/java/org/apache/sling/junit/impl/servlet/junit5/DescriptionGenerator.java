@@ -41,6 +41,7 @@ public enum DescriptionGenerator {
 
     private final Function<? super TestSource, Description> generator;
 
+    @SuppressWarnings("unchecked")
     <T extends TestSource> DescriptionGenerator(Class<T> clazz, Function<? super T, Description> generator) {
         this.clazz = clazz;
         this.generator = (Function<? super TestSource, Description>) generator;
@@ -59,7 +60,6 @@ public enum DescriptionGenerator {
                     .findFirst()
                     .orElse(null);
         }
-        ;
         return null;
     }
 }
