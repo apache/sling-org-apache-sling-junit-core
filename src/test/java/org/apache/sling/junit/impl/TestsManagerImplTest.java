@@ -18,10 +18,12 @@ package org.apache.sling.junit.impl;
 
 import org.apache.sling.junit.Renderer;
 import org.apache.sling.junit.RequestParser;
+import org.apache.sling.junit.TestsManager;
 import org.apache.sling.junit.TestsProvider;
 import org.apache.sling.junit.impl.servlet.PlainTextRenderer;
 import org.apache.sling.junit.sampletests.JUnit4SlingJUnit;
 import org.hamcrest.Matchers;
+import org.jetbrains.annotations.NotNull;
 import org.junit.Test;
 import org.junit.vintage.engine.VintageTestEngine;
 import org.osgi.framework.Bundle;
@@ -43,8 +45,11 @@ import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.Hashtable;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.function.BiConsumer;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -68,6 +73,8 @@ import static org.mockito.Mockito.when;
 public class TestsManagerImplTest {
 
     private static final int SYSTEM_STARTUP_SECONDS = 2;
+
+    private Set<Bundle> mockBundles = new HashSet<>();
 
     static {
         // Set a short timeout so our tests can run faster
@@ -168,8 +175,6 @@ public class TestsManagerImplTest {
 
         final ArrayList<String> allTestClasses = new ArrayList<>();
 
-        final List<Bundle> testBundles = new ArrayList<>();
-
         for (int i = 0; i < 5; i++) {
 
             final List<String> testClasses = asList(
@@ -190,19 +195,24 @@ public class TestsManagerImplTest {
             classes.addAll(nonTestClasses);
             classes.sort(Comparator.naturalOrder());
 
-            testBundles.add(createTestBundle(
+            createTestBundle(
                     "test-bundle-" + i,
                     "org.apache.sling.junit.testbundle" + i + ".*SlingJUnit",
                     classes
-            ));
+            );
         }
 
-        testBundles.add(createTestBundle("test-bundle-no-tests", "org.apache.sling.junit.notests.*SlingJUnit", emptyList()));
-        testBundles.add(createTestBundle("test-bundle-invalid-regexp", "[a-z", emptyList()));
-        testBundles.add(createTestBundle("test-bundle-no-regexp", null, emptyList()));
+        createTestBundle("test-bundle-no-tests", "org.apache.sling.junit.notests.*SlingJUnit", emptyList());
+        createTestBundle("test-bundle-invalid-regexp", "[a-z", emptyList());
+        createTestBundle("test-bundle-no-regexp", null, emptyList());
 
-        final BundleTestsProvider bundleTestsProvider = new BundleTestsProvider();
-        TestsManagerImpl testsManager = setupTestsManager(bundleTestsProvider, testBundles);
+        final Bundle junitBundle = createJUnitBundleMock("junit-bundle", Bundle.ACTIVE);
+        addBundleWiring(junitBundle, VintageTestEngine.class.getClassLoader());
+        final BundleContext bundleContext = junitBundle.getBundleContext();
+        final BundleTestsProvider bundleTestsProvider =
+                activateAndRegister(bundleContext, TestsProvider.class, new BundleTestsProvider(), BundleTestsProvider::activate);
+        final TestsManagerImpl testsManager =
+                activateAndRegister(bundleContext, TestsManager.class, new TestsManagerImpl(), TestsManagerImpl::activate);
 
         final RequestParser selector = new RequestParser(null);
         final Collection<String> testNames = testsManager.getTestNames(selector);
@@ -226,6 +236,13 @@ public class TestsManagerImplTest {
         bundleTestsProvider.deactivate();
     }
 
+    private <T> T activateAndRegister(BundleContext bundleContext, Class<? super T> interfaze, T service, BiConsumer<T, BundleContext> activator)
+            throws InvalidSyntaxException {
+        activator.accept(service, bundleContext);
+        registerService(bundleContext, service, interfaze);
+        return service;
+    }
+
     private static Renderer createRenderer() throws IOException {
         final PlainTextRenderer renderer = new PlainTextRenderer();
         final HttpServletResponse response = mock(HttpServletResponse.class);
@@ -234,14 +251,11 @@ public class TestsManagerImplTest {
         return renderer;
     }
 
-    private static TestsManagerImpl setupTestsManager(BundleTestsProvider testsProvider, Collection<Bundle> testBundles)
-            throws InvalidSyntaxException {
+    @NotNull
+    private Bundle createJUnitBundleMock(String symbolicName, int state) {
         final Bundle bundle = mock(Bundle.class);
-
-        when(bundle.getSymbolicName()).thenReturn("test-bundle");
-        when(bundle.getState()).thenReturn(Bundle.ACTIVE);
-        addBundleWiring(bundle, VintageTestEngine.class.getClassLoader());
-
+        when(bundle.getSymbolicName()).thenReturn(symbolicName);
+        when(bundle.getState()).thenReturn(state);
         when(bundle.getHeaders()).thenReturn(new Hashtable<>());
 
         final BundleContext bundleContext = mock(BundleContext.class);
@@ -249,56 +263,48 @@ public class TestsManagerImplTest {
 
         when(bundle.getBundleContext()).thenReturn(bundleContext);
 
-        final Bundle[] bundles = Stream
-                .concat(testBundles.stream(), Stream.of(bundle))
-                .toArray(Bundle[]::new);
-        when(bundleContext.getBundles()).thenAnswer(m -> bundles);
+        when(bundleContext.getBundles())
+                .thenAnswer(m -> mockBundles.toArray(new Bundle[0]));
 
-        // register tests provider service
-        testsProvider.activate(bundleContext);
-        @SuppressWarnings("unchecked") final ServiceReference<TestsProvider> serviceReference = (ServiceReference<TestsProvider>) mock(ServiceReference.class);
-        when(bundleContext.getServiceReferences(TestsProvider.class.getName(), null))
-                .thenAnswer(m -> Collections.singleton(serviceReference).toArray(new ServiceReference[0]));
-        when(bundleContext.getService(serviceReference)).thenReturn(testsProvider);
+        mockBundles.add(bundle);
 
-        final TestsManagerImpl testsManager = new TestsManagerImpl();
-        testsManager.activate(bundleContext);
-        return testsManager;
+        return bundle;
+    }
+
+    private void createTestBundle(String symbolicName, String testRegexp, Collection<String> classes)
+            throws ClassNotFoundException, IOException {
+        final Bundle bundle = createJUnitBundleMock(symbolicName, Bundle.ACTIVE);
+
+        when(bundle.findEntries("", "*.class", true)).thenAnswer(m -> classesAsResourceEnumeration(classes));
+
+        // we just return the Object.class instead of a real class - we're not doing anything with it
+        when(bundle.loadClass(argThat(classes::contains))).then(m -> JUnit4SlingJUnit.class);
+        assertThat("cannot load just any class", bundle.loadClass("any.class.Name"), nullValue());
+
+        if (testRegexp != null) {
+            bundle.getHeaders().put(BundleTestsProvider.SLING_TEST_REGEXP, testRegexp);
+        }
+
+        final ClassLoader classLoader = mock(ClassLoader.class);
+        when(classLoader.getResources(any())).thenAnswer(m -> Collections.emptyEnumeration());
+        addBundleWiring(bundle, classLoader);
+    }
+
+    private static <T> void registerService(BundleContext bundleContext, T service, Class<? super T> interfaze) throws InvalidSyntaxException {
+        @SuppressWarnings("unchecked") final ServiceReference<T> serviceReference = (ServiceReference<T>) mock(ServiceReference.class);
+        final Set<ServiceReference<T>> references = Collections.singleton(serviceReference);
+        when(bundleContext.getServiceReferences(interfaze, null)).thenAnswer(m -> references);
+        when(bundleContext.getServiceReferences(interfaze.getName(), null))
+                .thenAnswer(m -> references.toArray(new ServiceReference[0]));
+        when(bundleContext.getServiceReference(interfaze)).thenAnswer(m -> serviceReference);
+        when(bundleContext.getServiceReference(interfaze.getName())).thenAnswer(m -> serviceReference);
+        when(bundleContext.getService(serviceReference)).thenReturn(service);
     }
 
     private static void addBundleWiring(Bundle bundle, ClassLoader classLoader) {
         final BundleWiring bundleWiring = mock(BundleWiring.class);
         when(bundleWiring.getClassLoader()).thenReturn(classLoader);
         when(bundle.adapt(BundleWiring.class)).thenReturn(bundleWiring);
-    }
-
-    private static Bundle createTestBundle(String symbolicName, String testRegexp, Collection<String> classes)
-            throws ClassNotFoundException, IOException {
-        final Bundle bundle = mock(Bundle.class);
-
-        when(bundle.getSymbolicName()).thenReturn(symbolicName);
-        when(bundle.getState()).thenReturn(Bundle.ACTIVE);
-        final ClassLoader classLoader = mock(ClassLoader.class);
-        when(classLoader.getResources(any())).thenReturn(Collections.emptyEnumeration());
-        addBundleWiring(bundle, classLoader);
-
-        // we just return the Object.class instead of a real class - we're not doing anything with it
-        when(bundle.loadClass(argThat(classes::contains))).then(m -> JUnit4SlingJUnit.class);
-        assertThat("cannot load just any class", bundle.loadClass("any.class.Name"), nullValue());
-
-        final Hashtable<String, String> headers = new Hashtable<>();
-        if (testRegexp != null) {
-            headers.put(BundleTestsProvider.SLING_TEST_REGEXP, testRegexp);
-        }
-        when(bundle.getHeaders()).thenReturn(headers);
-
-        when(bundle.findEntries("", "*.class", true)).thenReturn(classesAsResourceEnumeration(classes));
-
-        final BundleContext bundleContext = mock(BundleContext.class);
-        when(bundleContext.getBundle()).thenReturn(bundle);
-
-        when(bundle.getBundleContext()).thenReturn(bundleContext);
-        return bundle;
     }
 
     private static Enumeration<URL> classesAsResourceEnumeration(Collection<String> classes) {
@@ -310,7 +316,7 @@ public class TestsManagerImplTest {
                         //     bundle://<random-bundle-identifier>:0/org/path/to/ClassName.class
                         // However, the "bundle" protocol causes an exception
                         // and in any case, only the URL's file part is used.
-                        return new URL("http://pseudo:80" + file);
+                        return new URL("file://pseudo:80" + file);
                     } catch (MalformedURLException e) {
                         fail(e.getMessage());
                     }
