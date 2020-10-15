@@ -24,8 +24,6 @@ import org.junit.runner.notification.RunListener;
 import org.slf4j.LoggerFactory;
 import org.slf4j.Logger;
 
-import java.util.Objects;
-
 public class TestContextRunListenerWrapper extends RunListener {
     private final RunListener wrapped;
     private long testStartTime;

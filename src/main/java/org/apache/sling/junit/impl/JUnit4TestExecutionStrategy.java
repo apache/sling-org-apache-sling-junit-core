@@ -33,7 +33,7 @@ public class JUnit4TestExecutionStrategy implements TestExecutionStrategy {
     }
 
     @Override
-    public void execute(Renderer renderer, TestSelector selector, RunListener runListener) throws Exception {
+    public void execute(TestSelector selector, RunListener runListener) throws Exception {
         final JUnitCore junit = new JUnitCore();
         junit.addListener(runListener);
         final Request request = testsManager.createTestRequest(selector, Request::method, Request::classes);

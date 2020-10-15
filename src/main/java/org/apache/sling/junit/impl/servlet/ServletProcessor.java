@@ -30,7 +30,6 @@ import org.apache.sling.junit.RendererSelector;
 import org.apache.sling.junit.RequestParser;
 import org.apache.sling.junit.TestSelector;
 import org.apache.sling.junit.TestsManager;
-import org.apache.sling.junit.impl.TestsManagerImpl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

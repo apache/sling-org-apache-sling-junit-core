@@ -26,7 +26,7 @@ import java.io.Closeable;
 
 public interface TestExecutionStrategy extends Closeable {
 
-    void execute(Renderer renderer, TestSelector selector, RunListener runListener) throws Exception;
+    void execute(TestSelector selector, RunListener runListener) throws Exception;
 
     @Override
     void close();

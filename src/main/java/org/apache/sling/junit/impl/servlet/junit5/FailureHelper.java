@@ -20,7 +20,6 @@ package org.apache.sling.junit.impl.servlet.junit5;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.junit.platform.engine.TestExecutionResult;
 import org.junit.platform.launcher.TestIdentifier;
 import org.junit.platform.launcher.listeners.TestExecutionSummary;
 import org.junit.runner.notification.Failure;
@@ -28,11 +27,6 @@ import org.junit.runner.notification.Failure;
 import static org.apache.sling.junit.impl.servlet.junit5.DescriptionGenerator.toDescription;
 
 public final class FailureHelper {
-
-    @Nullable
-    public static Failure convert(TestIdentifier testIdentifier, TestExecutionResult result) {
-        return convert(testIdentifier, result.getThrowable().orElse(null));
-    }
 
     @Nullable
     public static Failure convert(TestIdentifier testIdentifier, Throwable throwable) {

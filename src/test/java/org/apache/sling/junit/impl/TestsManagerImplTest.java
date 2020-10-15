@@ -16,6 +16,14 @@
  */
 package org.apache.sling.junit.impl;
 
+import net.bytebuddy.ByteBuddy;
+import net.bytebuddy.description.type.TypeDescription;
+import net.bytebuddy.dynamic.scaffold.InstrumentedType;
+import net.bytebuddy.implementation.DefaultMethodCall;
+import net.bytebuddy.implementation.Implementation;
+import net.bytebuddy.implementation.MethodCall;
+import net.bytebuddy.implementation.bytecode.ByteCodeAppender;
+import net.bytebuddy.matcher.ElementMatchers;
 import org.apache.sling.junit.Renderer;
 import org.apache.sling.junit.RequestParser;
 import org.apache.sling.junit.TestsManager;
@@ -25,9 +33,11 @@ import org.apache.sling.junit.sampletests.JUnit4SlingJUnit;
 import org.hamcrest.Matchers;
 import org.jetbrains.annotations.NotNull;
 import org.junit.Test;
+import org.junit.runner.notification.RunListener;
 import org.junit.vintage.engine.VintageTestEngine;
 import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleContext;
+import org.osgi.framework.Constants;
 import org.osgi.framework.InvalidSyntaxException;
 import org.osgi.framework.ServiceReference;
 import org.osgi.framework.wiring.BundleWiring;
@@ -41,17 +51,15 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Dictionary;
 import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.Hashtable;
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
-import java.util.function.Supplier;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
@@ -205,8 +213,9 @@ public class TestsManagerImplTest {
         createTestBundle("test-bundle-no-tests", "org.apache.sling.junit.notests.*SlingJUnit", emptyList());
         createTestBundle("test-bundle-invalid-regexp", "[a-z", emptyList());
         createTestBundle("test-bundle-no-regexp", null, emptyList());
+        createFragmentBundle("fragment");
 
-        final Bundle junitBundle = createJUnitBundleMock("junit-bundle", Bundle.ACTIVE);
+        final Bundle junitBundle = createMockBundle("junit-bundle", Bundle.ACTIVE);
         addBundleWiring(junitBundle, VintageTestEngine.class.getClassLoader());
         final BundleContext bundleContext = junitBundle.getBundleContext();
         final BundleTestsProvider bundleTestsProvider =
@@ -230,10 +239,39 @@ public class TestsManagerImplTest {
             // expected
         }
 
-        testsManager.executeTests(createRenderer(), selector);
+        testsManager.executeTests(createRenderer(), null);
+        testsManager.executeTests(createRenderer(), new RequestParser("org.apache.sling.junit.testbundle0.ASlingJUnit/.html"));
+        testsManager.executeTests(createRenderer(), new RequestParser("org.apache.sling.junit.testbundle0.ASlingJUnit/testSuccessful.html"));
+
+        try {
+            testsManager.executeTests(createRenderer(), new RequestParser("org.apache.sling.junit.testbundle0/testSuccessful.html"));
+            fail("IllegalStateException expected when selecting method for multiple tests");
+        } catch (IllegalStateException e) {
+            // expected
+        }
+
+        try {
+            testsManager.executeTests(createRenderer(), new RequestParser("no.test.Available.html"));
+            fail("NoTestCasesFoundException expected when selecting non-existing test class");
+        } catch (TestsManager.NoTestCasesFoundException e) {
+            // expected
+        }
 
         testsManager.deactivate();
         bundleTestsProvider.deactivate();
+    }
+
+    public void createFragmentBundle(String symbolicName) throws IOException {
+        final Bundle bundle = createMockBundle(symbolicName, Bundle.ACTIVE);
+
+        final Dictionary<String, String> fragmentHeaders = bundle.getHeaders();
+        fragmentHeaders.put(BundleTestsProvider.SLING_TEST_REGEXP, "system.bundle.*SlingJUnit");
+        fragmentHeaders.put(Constants.FRAGMENT_HOST, "system.bundle");
+
+        when(bundle.findEntries("", "*.class", true))
+                .thenAnswer(m -> classesAsResourceEnumeration(singletonList("system.bundle.FragmentSlingJUnit")));
+
+        addBundleWiring(bundle, emptyMockClassloader());
     }
 
     private <T> T activateAndRegister(BundleContext bundleContext, Class<? super T> interfaze, T service, BiConsumer<T, BundleContext> activator)
@@ -244,7 +282,12 @@ public class TestsManagerImplTest {
     }
 
     private static Renderer createRenderer() throws IOException {
-        final PlainTextRenderer renderer = new PlainTextRenderer();
+        final PlainTextRenderer renderer = new PlainTextRenderer() {
+            @Override
+            public RunListener getRunListener() {
+                return super.getRunListener();
+            }
+        };
         final HttpServletResponse response = mock(HttpServletResponse.class);
         when(response.getWriter()).thenReturn(mock(PrintWriter.class));
         renderer.setup(response, "Test");
@@ -252,7 +295,7 @@ public class TestsManagerImplTest {
     }
 
     @NotNull
-    private Bundle createJUnitBundleMock(String symbolicName, int state) {
+    private Bundle createMockBundle(String symbolicName, int state) {
         final Bundle bundle = mock(Bundle.class);
         when(bundle.getSymbolicName()).thenReturn(symbolicName);
         when(bundle.getState()).thenReturn(state);
@@ -273,7 +316,7 @@ public class TestsManagerImplTest {
 
     private void createTestBundle(String symbolicName, String testRegexp, Collection<String> classes)
             throws ClassNotFoundException, IOException {
-        final Bundle bundle = createJUnitBundleMock(symbolicName, Bundle.ACTIVE);
+        final Bundle bundle = createMockBundle(symbolicName, Bundle.ACTIVE);
 
         when(bundle.findEntries("", "*.class", true)).thenAnswer(m -> classesAsResourceEnumeration(classes));
 
@@ -285,9 +328,14 @@ public class TestsManagerImplTest {
             bundle.getHeaders().put(BundleTestsProvider.SLING_TEST_REGEXP, testRegexp);
         }
 
+        addBundleWiring(bundle, emptyMockClassloader());
+    }
+
+    @NotNull
+    private static ClassLoader emptyMockClassloader() throws IOException {
         final ClassLoader classLoader = mock(ClassLoader.class);
         when(classLoader.getResources(any())).thenAnswer(m -> Collections.emptyEnumeration());
-        addBundleWiring(bundle, classLoader);
+        return classLoader;
     }
 
     private static <T> void registerService(BundleContext bundleContext, T service, Class<? super T> interfaze) throws InvalidSyntaxException {

@@ -53,7 +53,7 @@ public class JUnit5TestExecutionStrategy implements TestExecutionStrategy {
     }
 
     @Override
-    public void execute(Renderer renderer, TestSelector selector, RunListener runListener) throws Exception {
+    public void execute(TestSelector selector, RunListener runListener) throws Exception {
         Launcher launcher = LauncherFactory.create(
                 LauncherConfig.builder()
                         .addTestEngines(testEngineTracker.getAvailableTestEngines())

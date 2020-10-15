@@ -147,7 +147,7 @@ public class TestsManagerImpl implements TestsManager {
     public void executeTests(@NotNull Renderer renderer, @Nullable TestSelector selector) throws Exception {
         renderer.title(2, "Running tests");
         waitForSystemStartup();
-        executionStrategy.execute(renderer, selector, new TestContextRunListenerWrapper(renderer.getRunListener()));
+        executionStrategy.execute(selector, new TestContextRunListenerWrapper(renderer.getRunListener()));
     }
 
     public <T> T createTestRequest(TestSelector selector,

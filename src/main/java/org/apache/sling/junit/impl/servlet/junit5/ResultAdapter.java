@@ -29,7 +29,7 @@ import java.util.stream.Collectors;
 
 public class ResultAdapter extends Result {
     
-    private final TestExecutionSummary summary;
+    private final transient TestExecutionSummary summary;
 
     public ResultAdapter(TestExecutionSummary summary) {
         this.summary = summary;

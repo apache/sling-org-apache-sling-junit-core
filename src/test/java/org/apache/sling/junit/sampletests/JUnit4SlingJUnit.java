@@ -18,14 +18,31 @@
  */
 package org.apache.sling.junit.sampletests;
 
+import org.junit.Ignore;
 import org.junit.Test;
 
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
+/**
+ * Pseudo test-case class executed tests in {@link org.apache.sling.junit.impl.TestsManagerImplTest}.
+ *
+ * Name does not match normal JUnit patterns in order NOT to be included in the normal build's tests.
+ */
 public class JUnit4SlingJUnit {
 
     @Test
     public void testSuccessful() {
         assertTrue(true);
+    }
+
+    @Test @Ignore
+    public void testSkipped() {
+        assertTrue(true);
+    }
+
+    @Test
+    public void testFailed() {
+        fail();
     }
 }

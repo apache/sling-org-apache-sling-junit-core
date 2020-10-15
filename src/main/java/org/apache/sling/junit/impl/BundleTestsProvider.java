@@ -34,6 +34,8 @@ import org.jetbrains.annotations.NotNull;
 import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.BundleEvent;
+import org.osgi.framework.Constants;
+import org.osgi.framework.FrameworkUtil;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
@@ -91,6 +93,9 @@ public class BundleTestsProvider extends AbstractTestsProvider {
         @Override
         public Set<String> addingBundle(Bundle bundle, BundleEvent event) {
             super.addingBundle(bundle, event);
+            if (isFragment(bundle)) {
+                return null;
+            }
             final Set<String> testClasses = getTestClasses(bundle);
             return testClasses.isEmpty() ? null : testClasses;
         }
@@ -140,6 +145,10 @@ public class BundleTestsProvider extends AbstractTestsProvider {
             final String f = url.getFile();
             final String cn = f.substring(1, f.length() - ".class".length());
             return cn.replace('/', '.');
+        }
+
+        private static boolean isFragment(final Bundle bundle) {
+            return bundle.getHeaders().get(Constants.FRAGMENT_HOST) != null;
         }
     }
 }
