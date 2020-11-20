@@ -16,10 +16,13 @@
  */
 package org.apache.sling.junit.impl;
 
+import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
+import java.util.Objects;
 
 import org.apache.sling.junit.TestObjectProcessor;
 import org.apache.sling.junit.annotations.TestReference;
+import org.apache.sling.junit.ServiceGetter;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.ServiceReference;
 import org.osgi.service.component.ComponentContext;
@@ -64,25 +67,32 @@ public class AnnotationsProcessor implements TestObjectProcessor {
             log.error(msg);
             throw new IllegalArgumentException(msg);
         }
-        
         final Class<?> serviceType = f.getType();
-        final Object service = getService(serviceType);
-        if(service != null) {
-            f.setAccessible(true);
-            f.set(testObject, service);
-            log.debug("Injected service {} into field {}", 
-                    serviceType.getName(), f.getName());
-        } else {
-            log.warn("Service {} not found for field {}", 
-                    serviceType.getName(), f.getName());
+        Annotation[] testReferences = f.getDeclaredAnnotations();
+        if(Objects.nonNull(testReferences) && testReferences.length != 0){
+            TestReference testReference = (TestReference) testReferences[0];
+            String filter = testReference.filter();
+            final Object service = getService(serviceType, filter);
+            if(service != null) {
+                f.setAccessible(true);
+                f.set(testObject, service);
+                log.debug("Injected service {} into field {}",
+                        serviceType.getName(), f.getName());
+            } else {
+                log.warn("Service {} not found for field {}",
+                        serviceType.getName(), f.getName());
+            }
         }
     }
-    
-    private Object getService(Class<?> c) {
+
+    private Object getService(Class<?> c, String filter) {
         Object result = null;
-        // BundleContext is not a service, but can be injected
         if(c.equals(BundleContext.class)) {
+            // BundleContext is not a service, but can be injected
             result = bundleContext;
+        } else if (Objects.nonNull(filter) && !filter.trim().isEmpty()){
+            // filter was used to target a specific service implementation
+            result = ServiceGetter.create(bundleContext, c, filter).getService();
         } else {
             ServiceReference ref = bundleContext.getServiceReference(c.getName());
             if(ref != null) {
