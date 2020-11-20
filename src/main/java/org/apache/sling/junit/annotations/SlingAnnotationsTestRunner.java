@@ -30,10 +30,10 @@ import org.slf4j.LoggerFactory;
  *  A test that has RunWith=SlingAnnotationsTestRunner can
  *  use @TestReference, for example, to access OSGi services.
  *  
- *  @deprecated - the {#link TeleporterRule} is a much simpler way of executing
+ *  FYI - {#link TeleporterRule} is another way of executing
  *      server-side tests, including OSGi service injection.
  */
-@Deprecated
+
 public class SlingAnnotationsTestRunner extends BlockJUnit4ClassRunner {
     private static final Logger log = LoggerFactory.getLogger(SlingAnnotationsTestRunner.class);
 
