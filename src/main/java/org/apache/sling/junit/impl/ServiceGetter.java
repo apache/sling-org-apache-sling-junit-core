@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.sling.junit;
+package org.apache.sling.junit.impl;
 
 import java.io.Closeable;
 

@@ -22,7 +22,6 @@ import java.util.Objects;
 
 import org.apache.sling.junit.TestObjectProcessor;
 import org.apache.sling.junit.annotations.TestReference;
-import org.apache.sling.junit.ServiceGetter;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.ServiceReference;
 import org.osgi.service.component.ComponentContext;
