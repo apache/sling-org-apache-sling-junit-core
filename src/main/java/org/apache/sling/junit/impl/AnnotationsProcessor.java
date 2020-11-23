@@ -87,22 +87,12 @@ public class AnnotationsProcessor implements TestObjectProcessor {
         }
     }
 
-    private Object getService(Class<?> c, String filter) {
+    private Object getService(Class<?> c, String target) {
+        // target may be used to get a specific service implementation of the interface, c
         Object result = null;
-        if(c.equals(BundleContext.class)) {
-            // BundleContext is not a service, but can be injected
-            result = bundleContext;
-        } else if (Objects.nonNull(filter) && !filter.trim().isEmpty()){
-            final ServiceGetter serviceGetter = ServiceGetter.create(bundleContext, c, filter);
-            // filter was used to target a specific service implementation
-            result = serviceGetter.getService();
-            this.serviceGetters.add(serviceGetter);
-        } else {
-            ServiceReference ref = bundleContext.getServiceReference(c.getName());
-            if(ref != null) {
-                result = bundleContext.getService(ref);
-            }
-        }
+        final ServiceGetter serviceGetter = ServiceGetter.create(bundleContext, c, target);
+        result = serviceGetter.getService();
+        this.serviceGetters.add(serviceGetter);
         return result;
     }
 
