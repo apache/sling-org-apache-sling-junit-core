@@ -18,6 +18,7 @@ package org.apache.sling.junit.impl;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
+import java.util.ArrayList;
 import java.util.Objects;
 
 import org.apache.sling.junit.TestObjectProcessor;
@@ -34,9 +35,11 @@ import org.slf4j.LoggerFactory;
 public class AnnotationsProcessor implements TestObjectProcessor {
     private Logger log = LoggerFactory.getLogger(getClass());
     private BundleContext bundleContext;
-    
+    private ArrayList<ServiceGetter> serviceGetters;
+
     protected void activate(ComponentContext ctx) {
         bundleContext = ctx.getBundleContext();
+        this.serviceGetters = new ArrayList<>();
         if(bundleContext == null) {
             throw new IllegalArgumentException("Null BundleContext in activate()");
         }
@@ -70,8 +73,8 @@ public class AnnotationsProcessor implements TestObjectProcessor {
         Annotation[] testReferences = f.getDeclaredAnnotations();
         if(Objects.nonNull(testReferences) && testReferences.length != 0){
             TestReference testReference = (TestReference) testReferences[0];
-            String filter = testReference.filter();
-            final Object service = getService(serviceType, filter);
+
+            final Object service = getService(serviceType, testReference.target());
             if(service != null) {
                 f.setAccessible(true);
                 f.set(testObject, service);
@@ -90,8 +93,10 @@ public class AnnotationsProcessor implements TestObjectProcessor {
             // BundleContext is not a service, but can be injected
             result = bundleContext;
         } else if (Objects.nonNull(filter) && !filter.trim().isEmpty()){
+            final ServiceGetter serviceGetter = ServiceGetter.create(bundleContext, c, filter);
             // filter was used to target a specific service implementation
-            result = ServiceGetter.create(bundleContext, c, filter).getService();
+            result = serviceGetter.getService();
+            this.serviceGetters.add(serviceGetter);
         } else {
             ServiceReference ref = bundleContext.getServiceReference(c.getName());
             if(ref != null) {
@@ -99,5 +104,10 @@ public class AnnotationsProcessor implements TestObjectProcessor {
             }
         }
         return result;
+    }
+
+
+    public void closeAllServices() {
+        this.serviceGetters.stream().forEach( serviceGetter -> serviceGetter.close());
     }
 }
