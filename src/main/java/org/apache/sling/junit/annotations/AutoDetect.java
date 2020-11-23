@@ -25,7 +25,4 @@ public class AutoDetect {
     private AutoDetect() {
         // disallows instancing this class
     }
-    private AutoDetect(String filter) {
-        // disallows instancing this class
-    }
 }

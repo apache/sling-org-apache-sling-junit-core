@@ -47,7 +47,7 @@ public class SlingAnnotationsTestRunner extends BlockJUnit4ClassRunner {
     @Override
     protected Object createTest() throws Exception {
         final BundleContext ctx = Activator.getBundleContext();
-        final ServiceReference ref = ctx == null ? null : ctx.getServiceReference(TestObjectProcessor.class.getName());
+        final ServiceReference<? extends Object> ref = ctx == null ? null : ctx.getServiceReference(TestObjectProcessor.class.getName());
         top = ref == null ? null : (TestObjectProcessor) ctx.getService(ref);
         if(top == null) {
             log.info("No TestObjectProcessor service available, annotations will not be processed");
@@ -63,7 +63,7 @@ public class SlingAnnotationsTestRunner extends BlockJUnit4ClassRunner {
         try {
             super.run(notifier);
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("Test 'run' method", e);
         } finally {
             AnnotationsProcessor ap = (AnnotationsProcessor) top;
             ap.closeAllServices();

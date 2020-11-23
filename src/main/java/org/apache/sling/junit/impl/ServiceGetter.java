@@ -33,7 +33,7 @@ public class ServiceGetter<T> implements Closeable {
     private final BundleContext bundleContext;
 
     public static <T> ServiceGetter<T> create(BundleContext bundleContext, Class<T> serviceClass, String ldapFilter) {
-        return new ServiceGetter<T>(bundleContext, serviceClass, ldapFilter);
+        return new ServiceGetter<>(bundleContext, serviceClass, ldapFilter);
     }
 
     @SuppressWarnings("unchecked")

@@ -24,7 +24,6 @@ import java.util.Objects;
 import org.apache.sling.junit.TestObjectProcessor;
 import org.apache.sling.junit.annotations.TestReference;
 import org.osgi.framework.BundleContext;
-import org.osgi.framework.ServiceReference;
 import org.osgi.service.component.ComponentContext;
 import org.osgi.service.component.annotations.Component;
 import org.slf4j.Logger;
@@ -35,7 +34,7 @@ import org.slf4j.LoggerFactory;
 public class AnnotationsProcessor implements TestObjectProcessor {
     private Logger log = LoggerFactory.getLogger(getClass());
     private BundleContext bundleContext;
-    private ArrayList<ServiceGetter> serviceGetters;
+    private ArrayList<ServiceGetter<? extends Object>> serviceGetters;
 
     protected void activate(ComponentContext ctx) {
         bundleContext = ctx.getBundleContext();
@@ -90,14 +89,15 @@ public class AnnotationsProcessor implements TestObjectProcessor {
     private Object getService(Class<?> c, String target) {
         // target may be used to get a specific service implementation of the interface, c
         Object result = null;
-        final ServiceGetter serviceGetter = ServiceGetter.create(bundleContext, c, target);
+        final ServiceGetter<? extends Object> serviceGetter = ServiceGetter.create(bundleContext, c, target);
         result = serviceGetter.getService();
         this.serviceGetters.add(serviceGetter);
         return result;
     }
 
-
     public void closeAllServices() {
-        this.serviceGetters.stream().forEach( serviceGetter -> serviceGetter.close());
+        for (int i=0; i<this.serviceGetters.size(); i++) {
+            this.serviceGetters.get(i).close();
+        }
     }
 }
