@@ -43,7 +43,7 @@ public @interface TestReference {
      *
      * @return the local name of the reference ("" by default)
      */
-    String filter() default "";
+    String target() default "";
     /**
      * The name of the service interface. This name is used by the Service Component Runtime to access the service on behalf of the
      * component. The default value for is the type of the field to which the annotation applies.

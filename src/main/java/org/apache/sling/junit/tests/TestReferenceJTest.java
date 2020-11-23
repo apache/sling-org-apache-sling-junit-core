@@ -24,26 +24,34 @@ import org.junit.runner.RunWith;
 import static junit.framework.TestCase.assertEquals;
 import static junit.framework.TestCase.assertNotNull;
 import static junit.framework.TestCase.assertNull;
+import static junit.framework.TestCase.assertTrue;
 
 
 @RunWith(SlingAnnotationsTestRunner.class)
 public class TestReferenceJTest {
 
-    @TestReference(filter="(component.name=org.apache.sling.junit.tests.impl.MyCoolServiceForTesting)")
+    @TestReference(target ="(component.name=org.apache.sling.junit.tests.impl.MyCoolServiceForTesting)")
     MyService myCoolService;
 
-    @TestReference(filter="(component.name=org.apache.sling.junit.tests.impl.MyLameServiceForTesting)")
+    @TestReference(target ="(component.name=org.apache.sling.junit.tests.impl.MyLameServiceForTesting)")
     MyService myLameService;
 
-    @TestReference(filter="(component.name=org.apache.sling.junit.tests.impl.MyNonExistingServiceForTesting)")
+    @TestReference(target ="(component.name=org.apache.sling.junit.tests.impl.MyNonExistingServiceForTesting)")
     MyService myNullService;
+
+    @TestReference
+    MyService myService;
+
 
     @Test
     public void exampleTestReference(){
         assertNotNull(myCoolService);
         assertNotNull(myLameService);
         assertNull(myNullService);
+        assertNotNull(myService);
         assertEquals("Cool Service", myCoolService.getName());
         assertEquals("Lame Service", myLameService.getName());
+        assertTrue(myService.getName().equals(myCoolService.getName()) ||
+            myService.getName().equals(myLameService.getName()));
     }
 }
