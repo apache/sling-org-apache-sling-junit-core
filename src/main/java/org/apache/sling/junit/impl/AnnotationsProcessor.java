@@ -19,6 +19,7 @@ package org.apache.sling.junit.impl;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 
 import org.apache.sling.junit.TestObjectProcessor;
@@ -34,7 +35,7 @@ import org.slf4j.LoggerFactory;
 public class AnnotationsProcessor implements TestObjectProcessor {
     private Logger log = LoggerFactory.getLogger(getClass());
     private BundleContext bundleContext;
-    private ArrayList<ServiceGetter<? extends Object>> serviceGetters;
+    private List<ServiceGetter<? extends Object>> serviceGetters;
 
     protected void activate(ComponentContext ctx) {
         bundleContext = ctx.getBundleContext();

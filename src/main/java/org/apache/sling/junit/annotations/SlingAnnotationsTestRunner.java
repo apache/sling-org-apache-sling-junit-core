@@ -62,8 +62,6 @@ public class SlingAnnotationsTestRunner extends BlockJUnit4ClassRunner {
     public void run(RunNotifier notifier){
         try {
             super.run(notifier);
-        } catch (Exception e) {
-            log.error("Test 'run' method", e);
         } finally {
             AnnotationsProcessor ap = (AnnotationsProcessor) top;
             ap.closeAllServices();
