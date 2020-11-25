@@ -27,6 +27,8 @@ import org.osgi.framework.ServiceReference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Objects;
+
 /** TestRunner which uses a TestObjectProcessor to 
  *  handle annotations in test classes.
  *  A test that has RunWith=SlingAnnotationsTestRunner can
@@ -64,7 +66,9 @@ public class SlingAnnotationsTestRunner extends BlockJUnit4ClassRunner {
             super.run(notifier);
         } finally {
             AnnotationsProcessor ap = (AnnotationsProcessor) top;
-            ap.closeAllServices();
+            if (Objects.nonNull(ap)){
+                ap.closeAllServices();
+            }
         }
     }
 }

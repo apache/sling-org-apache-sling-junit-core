@@ -17,21 +17,25 @@
 package org.apache.sling.junit.annotations;
 
 import org.apache.commons.lang3.StringUtils;
-import org.apache.sling.junit.tests.impl.MyLameServiceForTestingIT;
+import org.apache.http.entity.StringEntity;
+import org.apache.sling.junit.it.impl.MyLameServiceForTestingIT;
+import org.apache.sling.testing.clients.ClientException;
+import org.apache.sling.testing.clients.SlingHttpResponse;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.junit.Test;
 import org.apache.sling.testing.clients.osgi.OsgiConsoleClient;
 
+import java.io.UnsupportedEncodingException;
 import java.net.ServerSocket;
 import java.net.URI;
+import java.util.Collections;
 
 import org.ops4j.pax.exam.Configuration;
 import org.ops4j.pax.exam.Option;
 import org.ops4j.pax.exam.junit.PaxExamServer;
 import org.ops4j.pax.exam.options.extra.VMOption;
 
-import static junit.framework.TestCase.assertTrue;
 import static org.apache.sling.testing.paxexam.SlingOptions.logback;
 import static org.apache.sling.testing.paxexam.SlingOptions.slingQuickstartOakTar;
 import static org.ops4j.pax.exam.CoreOptions.composite;
@@ -39,6 +43,7 @@ import static org.ops4j.pax.exam.CoreOptions.mavenBundle;
 import static org.ops4j.pax.exam.CoreOptions.systemProperty;
 import static org.ops4j.pax.exam.CoreOptions.when;
 import org.apache.sling.testing.paxexam.TestSupport;
+
 
 public class ReferenceIT extends TestSupport {
     protected static int httpPort;
@@ -93,7 +98,6 @@ public class ReferenceIT extends TestSupport {
                 mavenBundle().groupId("log4j").artifactId("log4j").version("1.2.17"),
                 mavenBundle().groupId("org.apache.aries.spifly").artifactId("org.apache.aries.spifly.dynamic.framework.extension").version("1.3.2"),
                 mavenBundle().groupId("org.apache.felix").artifactId("org.apache.felix.webconsole.plugins.ds").version("2.1.0")
-
         ).getOptions();
     }
 
@@ -124,7 +128,14 @@ public class ReferenceIT extends TestSupport {
     }
 
     @Test
-    public void basicTest()  {
-        assertTrue(true);
+    public void testReferenceJITest() throws ClientException, UnsupportedEncodingException {
+        SlingHttpResponse response = CLIENT.doPost("/system/sling/junit/org.apache.sling.junit.it.TestReferenceJITest.html",
+                new StringEntity("some text"),
+                Collections.emptyList(),
+                200);
+        response.checkContentContains("TEST RUN FINISHED");
+        response.checkContentContains("failures:0");
+        response.checkContentContains("ignored:0");
+        response.checkContentContains("tests:1");
     }
 }

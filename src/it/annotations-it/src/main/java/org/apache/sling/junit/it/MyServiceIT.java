@@ -14,28 +14,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.sling.junit.tests.impl;
+package org.apache.sling.junit.it;
 
-import org.apache.sling.junit.tests.MyServiceIT;
-import org.osgi.service.component.annotations.Component;
+public interface MyServiceIT {
+    /** @return Name of the Service which is used to discover the Service by the User **/
+    String getName();
 
-@Component(
-        service = MyServiceIT.class
-)
-public class MyLameServiceForTestingIT implements MyServiceIT {
-    /**
-     * @return Name of the Service which is used to discover the Service by the User
-     **/
-    @Override
-    public String getName() {
-        return "Lame Service";
-    }
-
-    /**
-     * @return Description of the Service
-     **/
-    @Override
-    public String getDescription() {
-        return "My Lame Service is for testing @TestReference for in running JUnit tests within Sling";
-    }
+    /** @return Description of the Service  **/
+    String getDescription();
 }

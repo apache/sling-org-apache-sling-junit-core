@@ -1,1 +1,7 @@
 # Nothing needed here so far for this bundle
+Sling-Test-Regexp: .*JITest
+Import-Package:org.junit.platform.*;resolution:=optional, \
+                *
+-includeresource:org.apache.sling.junit.core-1.1.1-SNAPSHOT.jar;lib:=true
+Provide-Capability:\
+  osgi.contract;osgi.contract=JavaJSONP;uses:="javax.json,javax.json.spi,javax.json.stream";version:List<Version>="1.1,1.0"
