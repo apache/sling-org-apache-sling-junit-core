@@ -16,7 +16,7 @@
   <parent>
     <groupId>org.apache.sling</groupId>
     <artifactId>sling</artifactId>
-    <version>40</version>
+    <version>33</version>
     <relativePath/>
   </parent>
 
@@ -34,8 +34,7 @@
     <!-- additional options that can be passed to Pax before executing the tests -->
     <pax.vm.options />
     <bundle.filename>${basedir}/target/${project.build.finalName}.jar</bundle.filename>
-<!--    <annotations.bundle.version>MUST_BE_SET_BY_INVOKER</annotations.bundle.version>-->
-    <annotations.bundle.version>1.1.1-SNAPSHOT</annotations.bundle.version>
+    <annotations.bundle.version>MUST_BE_SET_BY_INVOKER</annotations.bundle.version>
   </properties>
 
   <build>
@@ -59,16 +58,16 @@
         </executions>
         <configuration>
           <systemPropertyVariables>
-<!--            ${bundle.filename}-->
-            <bundle.filename>hello</bundle.filename>
+            <bundle.filename>${bundle.filename}</bundle.filename>
             <pax.vm.options>${pax.vm.options}</pax.vm.options>
           </systemPropertyVariables>
         </configuration>
       </plugin>
-<!--      <plugin>-->
-<!--        <groupId>org.apache.servicemix.tooling</groupId>-->
-<!--        <artifactId>depends-maven-plugin</artifactId>-->
-<!--      </plugin>-->
+      <plugin>
+        <!-- Needed for mavenBundle..versionAsInProject() -->
+        <groupId>org.apache.servicemix.tooling</groupId>
+        <artifactId>depends-maven-plugin</artifactId>
+      </plugin>
       <plugin>
         <groupId>org.apache.rat</groupId>
         <artifactId>apache-rat-plugin</artifactId>

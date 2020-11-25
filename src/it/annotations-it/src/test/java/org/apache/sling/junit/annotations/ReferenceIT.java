@@ -17,7 +17,7 @@
 package org.apache.sling.junit.annotations;
 
 import org.apache.commons.lang3.StringUtils;
-import org.apache.sling.junit.tests.MyServiceIT;
+import org.apache.sling.junit.tests.impl.MyLameServiceForTestingIT;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.junit.Test;
@@ -40,7 +40,7 @@ import static org.ops4j.pax.exam.CoreOptions.systemProperty;
 import static org.ops4j.pax.exam.CoreOptions.when;
 import org.apache.sling.testing.paxexam.TestSupport;
 
-public class TestReferenceIT extends TestSupport {
+public class ReferenceIT extends TestSupport {
     protected static int httpPort;
     protected static OsgiConsoleClient CLIENT;
     private final static int STARTUP_WAIT_SECONDS = 30;
@@ -74,18 +74,9 @@ public class TestReferenceIT extends TestSupport {
 
         final String workingDirectory = workingDirectory();
 
-        String filename = System.getProperty("bundle.filename");
-        System.out.println("<<<<<<<<<<<<<<<<<<<<<<<");
-        System.out.println("Bundle File");
-        System.out.println(filename);
-        System.out.println("jacoco");
-        System.out.println(jacocoOpt);
-        System.out.println("pax.vm.options");
-        System.out.println(vmOpt);
-        System.out.println("<<<<<<<<<<<<<<<<<<<<<<<");
         return composite(
                 // TODO not sure why the below list of bundles is different from
-                // running tests with PaxExam.class - but this setup works
+                // running tests with PaxExam.class (SLING-9929)
                 //super.baseConfiguration(),
 
                 when(vmOption != null).useOptions(vmOption),
@@ -112,11 +103,12 @@ public class TestReferenceIT extends TestSupport {
         CLIENT = new OsgiConsoleClient(url, "admin", "admin");
         
         CLIENT.waitExists("/", STARTUP_WAIT_SECONDS * 1000, 500);
-        CLIENT.waitComponentRegistered(MyServiceIT.class.getName(), 10 * 1000, 500);
+
+        CLIENT.waitComponentRegistered(MyLameServiceForTestingIT.class.getName(), 10 * 1000, 500);
 
         // Verify stable status for a bit
         for(int i=0; i < 10 ; i++) {
-            CLIENT.waitComponentRegistered(MyServiceIT.class.getName(), 1000, 100);
+            CLIENT.waitComponentRegistered(MyLameServiceForTestingIT.class.getName(), 1000, 100);
             Thread.sleep(100);
         }
     }
