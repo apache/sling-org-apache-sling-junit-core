@@ -35,13 +35,14 @@ import org.ops4j.pax.exam.Configuration;
 import org.ops4j.pax.exam.Option;
 import org.ops4j.pax.exam.junit.PaxExamServer;
 import org.ops4j.pax.exam.options.extra.VMOption;
-
+import org.apache.sling.testing.paxexam.SlingOptions;
 import static org.apache.sling.testing.paxexam.SlingOptions.logback;
 import static org.apache.sling.testing.paxexam.SlingOptions.slingQuickstartOakTar;
 import static org.ops4j.pax.exam.CoreOptions.composite;
 import static org.ops4j.pax.exam.CoreOptions.mavenBundle;
 import static org.ops4j.pax.exam.CoreOptions.systemProperty;
 import static org.ops4j.pax.exam.CoreOptions.when;
+import static org.ops4j.pax.exam.CoreOptions.junitBundles;
 import org.apache.sling.testing.paxexam.TestSupport;
 
 
@@ -79,6 +80,9 @@ public class ReferenceIT extends TestSupport {
 
         final String workingDirectory = workingDirectory();
 
+        // Need recent commons.johnzon for the osgi.contract=JavaJSONP capability
+        SlingOptions.versionResolver.setVersion("org.apache.sling", "org.apache.sling.commons.johnzon", "1.2.6");
+
         return composite(
                 // TODO not sure why the below list of bundles is different from
                 // running tests with PaxExam.class (SLING-9929)
@@ -91,7 +95,9 @@ public class ReferenceIT extends TestSupport {
                 systemProperty("org.osgi.service.http.port").value(String.valueOf(httpPort)),
 
                 slingQuickstartOakTar(workingDirectory, httpPort),
+
                 testBundle("bundle.filename"),
+                mavenBundle().groupId("org.apache.sling").artifactId("org.apache.sling.junit.core").versionAsInProject(),
 
                 logback(),
                 mavenBundle().groupId("org.apache.felix").artifactId("org.apache.felix.log").version("1.2.4"),
@@ -136,6 +142,6 @@ public class ReferenceIT extends TestSupport {
         response.checkContentContains("TEST RUN FINISHED");
         response.checkContentContains("failures:0");
         response.checkContentContains("ignored:0");
-        response.checkContentContains("tests:1");
+        response.checkContentContains("tests:4");
     }
 }

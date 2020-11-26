@@ -21,6 +21,7 @@ import org.apache.sling.junit.annotations.SlingAnnotationsTestRunner;
 import org.apache.sling.junit.annotations.TestReference;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.osgi.service.cm.ConfigurationAdmin;
 
 import static junit.framework.TestCase.assertEquals;
 import static junit.framework.TestCase.assertNotNull;
@@ -41,14 +42,28 @@ public class TestReferenceJITest {
     @TestReference
     MyServiceIT myService;
 
+    @TestReference
+    ConfigurationAdmin configAdmin;
 
     @Test
-    public void exampleTestReference(){
-//        assertTrue(true);
+    public void testOsgiReferences() {
+        assertNotNull(configAdmin);
+    }
+
+    @Test
+    public void testNoTargetReferences() {
+        assertNotNull(myService);
+    }
+
+    @Test
+    public void testNotFoundReference() {
+        assertNull(myNullService);
+    }
+
+    @Test
+    public void testTargetReferences(){
         assertNotNull(myCoolService);
         assertNotNull(myLameService);
-        assertNull(myNullService);
-        assertNotNull(myService);
         assertEquals("Cool Service", myCoolService.getName());
         assertEquals("Lame Service", myLameService.getName());
         assertTrue(myService.getName().equals(myCoolService.getName()) ||
