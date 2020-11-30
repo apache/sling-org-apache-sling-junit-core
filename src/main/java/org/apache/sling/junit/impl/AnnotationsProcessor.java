@@ -19,7 +19,9 @@ package org.apache.sling.junit.impl;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
+import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 import org.apache.sling.junit.TestObjectProcessor;
@@ -35,11 +37,11 @@ import org.slf4j.LoggerFactory;
 public class AnnotationsProcessor implements TestObjectProcessor {
     private Logger log = LoggerFactory.getLogger(getClass());
     private BundleContext bundleContext;
-    private List<ServiceGetter<? extends Object>> serviceGetters;
+    private Map<Object, List<ServiceGetter<?>>> map;
 
     protected void activate(ComponentContext ctx) {
         bundleContext = ctx.getBundleContext();
-        this.serviceGetters = new ArrayList<>();
+        this.map = new IdentityHashMap<>();
         if(bundleContext == null) {
             throw new IllegalArgumentException("Null BundleContext in activate()");
         }
@@ -49,11 +51,14 @@ public class AnnotationsProcessor implements TestObjectProcessor {
     protected void deactivate(ComponentContext ctx) {
         bundleContext = null;
         log.debug("{} deactivated", this);
+        map.clear();
     }
     
     /** Process annotations on the test object */
+    @Override
     public Object process(Object testObject) throws Exception {
         log.debug("processing {}", testObject);
+        map.put(testObject, new ArrayList<>());
         for(Field f : testObject.getClass().getDeclaredFields()) {
             if(f.isAnnotationPresent(TestReference.class)) {
                 processTestReference(testObject, f);
@@ -61,7 +66,15 @@ public class AnnotationsProcessor implements TestObjectProcessor {
         }
         return testObject;
     }
-    
+
+    public void cleanupTest(Object test) {
+        List<ServiceGetter<?>> serviceGetters = this.map.get(test);
+        for (int i=0; i<serviceGetters.size(); i++) {
+            serviceGetters.get(i).close();
+        }
+        this.map.remove(test);
+    }
+
     /** Process the TestReference annotation to inject services into fields */
     private void processTestReference(Object testObject, Field f) throws Exception {
         if(bundleContext == null) {
@@ -74,7 +87,7 @@ public class AnnotationsProcessor implements TestObjectProcessor {
         if(Objects.nonNull(testReferences) && testReferences.length != 0){
             TestReference testReference = (TestReference) testReferences[0];
 
-            final Object service = getService(serviceType, testReference.target());
+            final Object service = getService(serviceType, testReference.target(), testObject);
             if(service != null) {
                 f.setAccessible(true);
                 f.set(testObject, service);
@@ -87,18 +100,12 @@ public class AnnotationsProcessor implements TestObjectProcessor {
         }
     }
 
-    private Object getService(Class<?> c, String target) {
+    private Object getService(Class<?> c, String target, Object testObj) {
         // target may be used to get a specific service implementation of the interface, c
         Object result = null;
         final ServiceGetter<? extends Object> serviceGetter = ServiceGetter.create(bundleContext, c, target);
         result = serviceGetter.getService();
-        this.serviceGetters.add(serviceGetter);
+        this.map.get(testObj).add(serviceGetter);
         return result;
-    }
-
-    public void closeAllServices() {
-        for (int i=0; i<this.serviceGetters.size(); i++) {
-            this.serviceGetters.get(i).close();
-        }
     }
 }

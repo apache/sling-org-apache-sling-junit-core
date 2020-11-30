@@ -27,6 +27,8 @@ import org.osgi.framework.ServiceReference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 
 /** TestRunner which uses a TestObjectProcessor to 
@@ -41,9 +43,11 @@ import java.util.Objects;
 public class SlingAnnotationsTestRunner extends BlockJUnit4ClassRunner {
     private static final Logger log = LoggerFactory.getLogger(SlingAnnotationsTestRunner.class);
     private TestObjectProcessor top;
+    private List<Object> tests;
 
     public SlingAnnotationsTestRunner(Class<?> clazz) throws InitializationError {
         super(clazz);
+        tests = new ArrayList<>();
     }
     
     @Override
@@ -56,7 +60,9 @@ public class SlingAnnotationsTestRunner extends BlockJUnit4ClassRunner {
             return super.createTest();
         } else { 
             log.debug("Using TestObjectProcessor {}", top);
-            return top.process(super.createTest());
+            Object test = top.process(super.createTest());
+            tests.add(test);
+            return test;
         }
     }
 
@@ -65,9 +71,11 @@ public class SlingAnnotationsTestRunner extends BlockJUnit4ClassRunner {
         try {
             super.run(notifier);
         } finally {
-            AnnotationsProcessor ap = (AnnotationsProcessor) top;
+            AnnotationsProcessor ap = (AnnotationsProcessor) this.top;
             if (Objects.nonNull(ap)){
-                ap.closeAllServices();
+                for (int i=0; i<tests.size(); i++) {
+                    ap.cleanupTest(tests.get(i));
+                }
             }
         }
     }

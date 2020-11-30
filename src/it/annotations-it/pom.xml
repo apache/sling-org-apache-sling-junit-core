@@ -33,8 +33,10 @@
     <org.ops4j.pax.exam.version>4.13.4</org.ops4j.pax.exam.version>
     <junit.version>4.13</junit.version>
     <hamcrest.version>1.3</hamcrest.version>
-    <!-- additional options that can be passed to Pax before executing the tests. See README for Debugging instructions. -->
-    <pax.vm.options />
+    <!-- additional options that can be passed to Pax before executing the tests -->
+    <pax.vm.options/>
+<!--    See README for Debugging instructions. -->
+<!--    <pax.vm.options>-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=5015</pax.vm.options>-->
     <bundle.filename>${basedir}/target/${project.build.finalName}.jar</bundle.filename>
     <annotations.bundle.version>MUST_BE_SET_BY_INVOKER</annotations.bundle.version>
   </properties>
