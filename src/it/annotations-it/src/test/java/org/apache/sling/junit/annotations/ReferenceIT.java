@@ -42,7 +42,6 @@ import static org.ops4j.pax.exam.CoreOptions.composite;
 import static org.ops4j.pax.exam.CoreOptions.mavenBundle;
 import static org.ops4j.pax.exam.CoreOptions.systemProperty;
 import static org.ops4j.pax.exam.CoreOptions.when;
-import static org.ops4j.pax.exam.CoreOptions.junitBundles;
 import org.apache.sling.testing.paxexam.TestSupport;
 
 
