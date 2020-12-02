@@ -71,8 +71,8 @@ public class SlingAnnotationsTestRunner extends BlockJUnit4ClassRunner {
         try {
             super.run(notifier);
         } finally {
-            AnnotationsProcessor ap = (AnnotationsProcessor) this.top;
-            if (Objects.nonNull(ap)){
+            if (this.top instanceof AnnotationsProcessor) {
+                AnnotationsProcessor ap = (AnnotationsProcessor) this.top;
                 for (int i=0; i<tests.size(); i++) {
                     ap.cleanupTest(tests.get(i));
                 }

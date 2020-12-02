@@ -51,6 +51,9 @@ public class AnnotationsProcessor implements TestObjectProcessor {
     protected void deactivate(ComponentContext ctx) {
         bundleContext = null;
         log.debug("{} deactivated", this);
+        for (Map.Entry<Object, List<ServiceGetter<?>>> entry : map.entrySet()) {
+            cleanupTest(entry.getKey());
+        }
         map.clear();
     }
     
@@ -66,13 +69,12 @@ public class AnnotationsProcessor implements TestObjectProcessor {
         }
         return testObject;
     }
-
+    
     public void cleanupTest(Object test) {
-        List<ServiceGetter<?>> serviceGetters = this.map.get(test);
+        List<ServiceGetter<?>> serviceGetters = this.map.remove(test);
         for (int i=0; i<serviceGetters.size(); i++) {
             serviceGetters.get(i).close();
         }
-        this.map.remove(test);
     }
 
     /** Process the TestReference annotation to inject services into fields */
