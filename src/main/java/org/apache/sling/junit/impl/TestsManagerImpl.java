@@ -72,9 +72,9 @@ public class TestsManagerImpl implements TestsManager {
         bundleContext = ctx;
         testsProviderTracker = new ServiceTracker<>(bundleContext, TestsProvider.class, null);
         testsProviderTracker.open();
-        try {
+        if (JUnit5TestExecutionStrategy.canLoadRequiredClasses()) {
             executionStrategy = new JUnit5TestExecutionStrategy(this, ctx);
-        } catch (NoClassDefFoundError e) {
+        } else  {
             // (some) optional imports to org.junit.platform.* (JUnit5 API) are missing
             executionStrategy = new JUnit4TestExecutionStrategy(this);
         }
