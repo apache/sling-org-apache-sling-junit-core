@@ -15,8 +15,8 @@
 
   <parent>
     <groupId>org.apache.sling</groupId>
-    <artifactId>sling</artifactId>
-    <version>33</version>
+    <artifactId>sling-bundle-parent</artifactId>
+    <version>40</version>
     <relativePath/>
   </parent>
 
@@ -190,6 +190,5 @@
       <version>2.3.0</version>
       <scope>test</scope>
     </dependency>
-
   </dependencies>
 </project>

@@ -20,7 +20,7 @@ Two separate remote debugger clients may be needed:
 which can be debugged using the following commands... 
   
 * `cd sling-org-apache-sling-junit-core/src/it/annotations-it`
-* `mvn clean verify  -Dannotations.bundle.version=1.1.1-SNAPSHOT -Dmaven.failsafe.debug`
+* `mvn clean verify  -Dannotations.bundle.version=1.1.1-SNAPSHOT -Dmaven.failsafe.debug -Dbnd.baseline.skip`
 * The test will wait for debugger to connect before continuing.
 * Set a breakpoint in `waitForSling` within  ReferenceIT.java   
 * Connect a debugger client over 5005 (default) or the selected port [1]  
