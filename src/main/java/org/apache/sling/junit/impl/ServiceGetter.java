@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.sling.junit.rules;
+package org.apache.sling.junit.impl;
 
 import java.io.Closeable;
 
@@ -27,13 +27,13 @@ import org.osgi.framework.InvalidSyntaxException;
 import org.osgi.util.tracker.ServiceTracker;
 
 /** Implements the logic used to get a service */
-class ServiceGetter<T> implements Closeable {
+public class ServiceGetter<T> implements Closeable {
 
     private final ServiceTracker tracker;
     private final BundleContext bundleContext;
 
     public static <T> ServiceGetter<T> create(BundleContext bundleContext, Class<T> serviceClass, String ldapFilter) {
-        return new ServiceGetter<T>(bundleContext, serviceClass, ldapFilter);
+        return new ServiceGetter<>(bundleContext, serviceClass, ldapFilter);
     }
 
     @SuppressWarnings("unchecked")
