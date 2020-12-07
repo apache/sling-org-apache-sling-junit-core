@@ -3,7 +3,6 @@ Export-Package: !org.junit.platform.*, \
                 junit.*;version=${junit.version}, \
                 org.junit.*;version=${junit.version}, \
                 org.hamcrest.*;version=${hamcrest.version};-split-package:=merge-first
-Sling-Test-Regexp: .*JTest
 Import-Package: org.junit.platform.*;resolution:=optional, \
                 *
 -includeresource: @org.jacoco.agent-*.jar!/org/jacoco/agent/rt/IAgent*
