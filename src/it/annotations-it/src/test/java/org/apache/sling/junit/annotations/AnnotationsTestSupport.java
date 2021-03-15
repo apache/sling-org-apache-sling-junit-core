@@ -28,7 +28,7 @@ import org.ops4j.pax.exam.options.extra.VMOption;
 
 import org.apache.sling.junit.it.impl.MyCoolServiceForTestingIT;
 import org.apache.sling.junit.it.impl.MyLameServiceForTestingIT;
-import static org.apache.sling.testing.paxexam.SlingOptions.slingQuickstartOakTar;
+import static org.apache.sling.testing.paxexam.SlingOptions.slingServlets;
 import static org.apache.sling.testing.paxexam.SlingOptions.versionResolver;
 import static org.apache.sling.testing.paxexam.SlingOptions.logback;
 import static org.ops4j.pax.exam.CoreOptions.options;
@@ -72,7 +72,7 @@ public class AnnotationsTestSupport extends TestSupport {
             systemProperty("org.osgi.service.http.port").value(String.valueOf(httpPort)),
 
             serverBaseConfiguration(),
-            slingQuickstartOakTar(workingDirectory(), httpPort),
+            slingServlets(),
 
             testBundle("bundle.filename"),
             mavenBundle().groupId("org.apache.sling").artifactId("org.apache.sling.junit.core").versionAsInProject(),
@@ -90,7 +90,6 @@ public class AnnotationsTestSupport extends TestSupport {
     public void waitForSling() throws Exception {
         final URI url = new URI(String.format("http://localhost:%d", httpPort));
         CLIENT = new OsgiConsoleClient(url, "admin", "admin");
-        CLIENT.waitExists("/", STARTUP_WAIT_SECONDS * 1000, 500);
 
         final String [] waitFor = {
             MyCoolServiceForTestingIT.class.getName(),
