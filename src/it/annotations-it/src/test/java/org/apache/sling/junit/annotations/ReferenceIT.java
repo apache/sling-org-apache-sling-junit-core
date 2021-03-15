@@ -34,13 +34,20 @@ import static org.ops4j.pax.exam.CoreOptions.when;
 public class ReferenceIT extends AnnotationsTestSupport {
     @Test
     public void testReferenceJITest() throws ClientException, UnsupportedEncodingException {
-        SlingHttpResponse response = CLIENT.doPost("/system/sling/junit/org.apache.sling.junit.it.TestReferenceJITest.html",
+        final SlingHttpResponse response = CLIENT.doPost("/system/sling/junit/org.apache.sling.junit.it.TestReferenceJITest.html",
                 new StringEntity("some text"),
                 Collections.emptyList(),
                 200);
-        response.checkContentContains("TEST RUN FINISHED");
-        response.checkContentContains("failures:0");
-        response.checkContentContains("ignored:0");
-        response.checkContentContains("tests:4");
+        final String [] toCheck = {
+            "TEST RUN FINISHED",
+            "failures:0",
+            "ignored:0",
+            "tests:4",
+            "testTargetReferences",
+            "testOsgiReferences",
+        };
+        for(String check : toCheck) {
+            response.checkContentContains(check);
+        }
     }
 }
