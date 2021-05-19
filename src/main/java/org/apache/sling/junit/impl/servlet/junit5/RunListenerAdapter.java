@@ -91,12 +91,19 @@ public class RunListenerAdapter implements TestExecutionListener {
     public void executionFinished(TestIdentifier testIdentifier, TestExecutionResult testExecutionResult) {
         summarizer.executionFinished(testIdentifier, testExecutionResult);
         if (testIdentifier.isTest()) {
-            if (testExecutionResult.getStatus() != TestExecutionResult.Status.SUCCESSFUL) {
-                try {
-                    runListener.testFailure(FailureHelper.convert(testIdentifier, testExecutionResult.getThrowable().orElse(null)));
-                } catch (Exception exception) {
-                    throw new RuntimeException(exception);
+            try {
+                switch (testExecutionResult.getStatus()) {
+                    case FAILED:
+                        runListener.testFailure(FailureHelper.convert(testIdentifier, testExecutionResult.getThrowable().orElse(null)));
+                        break;
+                    case ABORTED:
+                        runListener.testAssumptionFailure(FailureHelper.convert(testIdentifier, testExecutionResult.getThrowable().orElse(null)));
+                        break;
+                    case SUCCESSFUL:
+                        break;
                 }
+            } catch (Exception exception) {
+                throw new RuntimeException(exception);
             }
             withDescription(testIdentifier, runListener::testFinished);
         } else {

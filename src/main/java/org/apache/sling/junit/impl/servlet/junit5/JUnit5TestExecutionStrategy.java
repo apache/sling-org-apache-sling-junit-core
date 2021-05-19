@@ -21,7 +21,9 @@ package org.apache.sling.junit.impl.servlet.junit5;
 import org.apache.sling.junit.TestSelector;
 import org.apache.sling.junit.impl.TestExecutionStrategy;
 import org.apache.sling.junit.impl.TestsManagerImpl;
+import org.jetbrains.annotations.NotNull;
 import org.junit.platform.engine.DiscoverySelector;
+import org.junit.platform.engine.TestEngine;
 import org.junit.platform.engine.discovery.DiscoverySelectors;
 import org.junit.platform.launcher.Launcher;
 import org.junit.platform.launcher.LauncherDiscoveryRequest;
@@ -71,27 +73,34 @@ public class JUnit5TestExecutionStrategy implements TestExecutionStrategy {
 
     @Override
     public void execute(TestSelector selector, RunListener runListener) throws Exception {
-        Launcher launcher = LauncherFactory.create(
+        Launcher launcher = createLauncher(runListener, testEngineTracker.getAvailableTestEngines());
+        final LauncherDiscoveryRequest request = testsManager.createTestRequest(selector,
+                JUnit5TestExecutionStrategy::methodRequest,
+                JUnit5TestExecutionStrategy::classesRequest);
+        launcher.execute(request);
+    }
+
+    @NotNull
+    public static Launcher createLauncher(RunListener runListener, TestEngine... availableTestEngines) {
+        return LauncherFactory.create(
                 LauncherConfig.builder()
-                        .addTestEngines(testEngineTracker.getAvailableTestEngines())
+                        .addTestEngines(availableTestEngines)
                         .addTestExecutionListeners(new RunListenerAdapter(runListener))
                         .enableTestEngineAutoRegistration(false)
                         .enableTestExecutionListenerAutoRegistration(false)
                         .build()
         );
-
-        final LauncherDiscoveryRequest request =
-                testsManager.createTestRequest(selector, this::methodRequest, this::classesRequest);
-        launcher.execute(request);
     }
 
-    private LauncherDiscoveryRequest methodRequest(Class<?> testClass, String testMethodName) {
+    @NotNull
+    public static LauncherDiscoveryRequest methodRequest(Class<?> testClass, String testMethodName) {
         return LauncherDiscoveryRequestBuilder.request()
                 .selectors(selectMethod(testClass, testMethodName))
                 .build();
     }
 
-    private LauncherDiscoveryRequest classesRequest(Class<?>[] testClasses) {
+    @NotNull
+    public static LauncherDiscoveryRequest classesRequest(Class<?>... testClasses) {
         final DiscoverySelector[] selectors = Stream.of(testClasses)
                 .map(DiscoverySelectors::selectClass)
                 .toArray(DiscoverySelector[]::new);

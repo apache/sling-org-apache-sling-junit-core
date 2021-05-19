@@ -103,7 +103,7 @@ public class HtmlRenderer extends RunListener implements Renderer,RendererFactor
         }
         response.setContentType("text/html");
         response.setCharacterEncoding("UTF-8");
-        output = response.getWriter();
+        setWriter(response.getWriter());
         output.println("<html><head>");
         output.println("<link rel='stylesheet' type='text/css' href='" + ServletProcessor.CSS + "'/>");
         output.print("<title>");
@@ -114,6 +114,10 @@ public class HtmlRenderer extends RunListener implements Renderer,RendererFactor
         output.println("</h1>");
     }
 
+    public void setWriter(PrintWriter writer) {
+        output = writer;
+    }
+
     public void cleanup() {
         output.println("</body>");
         output.println("</html>");
@@ -122,6 +126,18 @@ public class HtmlRenderer extends RunListener implements Renderer,RendererFactor
 
     public RunListener getRunListener() {
         return this;
+    }
+
+    @Override
+    public void testAssumptionFailure(Failure failure) {
+        super.testAssumptionFailure(failure);
+        output.print("<p class='ignored'><h3>TEST ABORTED</h3><b>");
+        String message = failure.getMessage();
+        if (!message.startsWith("Assumption failed: ")) {
+            message = "Assumption failed: " + message;
+        }
+        HtmlFilter.escape(output, message);
+        output.println("</b></p>");
     }
 
     @Override
@@ -176,6 +192,8 @@ public class HtmlRenderer extends RunListener implements Renderer,RendererFactor
         counter("failures", "failureCount", result.getFailureCount());
         output.print(", ");
         counter("ignored", "ignoredCount", result.getIgnoreCount());
+        output.print(", ");
+        counter("aborted", "abortedCount", result.getAssumptionFailureCount());
         output.println("</p>");
     }
 

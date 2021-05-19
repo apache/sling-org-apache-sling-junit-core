@@ -65,7 +65,7 @@ public class ResultAdapter extends Result {
 
     @Override
     public int getAssumptionFailureCount() {
-        return 0;
+        return (int) summary.getTestsAbortedCount();
     }
 
     @Override
