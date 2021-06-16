@@ -27,8 +27,6 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-import static org.junit.platform.commons.support.AnnotationSupport.findAnnotation;
-
 /**
  * The {@code @Service} annotation is to be used for test classes or methods annotated
  * with the {@link OSGi @OSGi} annotation. Note that tests using this annotation are

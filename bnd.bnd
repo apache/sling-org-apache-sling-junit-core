@@ -6,5 +6,6 @@ Export-Package: !org.junit.platform.*, \
                 org.hamcrest.*;version=${hamcrest.version};-split-package:=merge-first
 Import-Package: org.junit.platform.*;resolution:=optional, \
                 org.junit.jupiter.*;resolution:=optional, \
+                org.apache.commons.lang3.reflect.*;resolution:=optional, \
                 *
 -includeresource: @org.jacoco.agent-*.jar!/org/jacoco/agent/rt/IAgent*
