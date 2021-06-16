@@ -18,7 +18,8 @@
  */
 package org.apache.sling.junit.impl.servlet;
 
-import org.apache.sling.junit.impl.servlet.junit5.JUnit5TestExecutionStrategy;
+import org.apache.sling.junit.impl.servlet.junit5.JUnitPlatformHelper;
+import org.apache.sling.junit.impl.servlet.junit5.RunListenerAdapter;
 import org.hamcrest.Matchers;
 import org.junit.Assert;
 import org.junit.Assume;
@@ -29,9 +30,6 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.platform.engine.TestEngine;
-import org.junit.platform.launcher.Launcher;
-import org.junit.platform.launcher.LauncherDiscoveryRequest;
-import org.junit.runner.notification.RunListener;
 import org.junit.vintage.engine.VintageTestEngine;
 
 import java.io.PrintWriter;
@@ -86,16 +84,8 @@ public class HtmlRendererTest {
         final StringWriter out = new StringWriter();
         final HtmlRenderer htmlRenderer = new HtmlRenderer();
         htmlRenderer.setWriter(new PrintWriter(out));
-        runTest(testEngine, htmlRenderer, testClass, methodName);
+        JUnitPlatformHelper.executeTest(testEngine, testClass, methodName, new RunListenerAdapter(htmlRenderer));
         return out.toString();
-    }
-
-    private static void runTest(TestEngine testEngine, RunListener runListener, Class<?> testClass, String methodName) {
-        final Launcher launcher = JUnit5TestExecutionStrategy.createLauncher(runListener, testEngine);
-        final LauncherDiscoveryRequest request = methodName != null
-                ? JUnit5TestExecutionStrategy.methodRequest(testClass, methodName)
-                : JUnit5TestExecutionStrategy.classesRequest(testClass);
-        launcher.execute(request);
     }
 
     public static class ExampleTestCases {
