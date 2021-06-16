@@ -21,22 +21,14 @@ package org.apache.sling.junit.impl.servlet.junit5;
 import org.apache.sling.junit.TestSelector;
 import org.apache.sling.junit.impl.TestExecutionStrategy;
 import org.apache.sling.junit.impl.TestsManagerImpl;
-import org.jetbrains.annotations.NotNull;
-import org.junit.platform.engine.DiscoverySelector;
-import org.junit.platform.engine.TestEngine;
-import org.junit.platform.engine.discovery.DiscoverySelectors;
 import org.junit.platform.launcher.Launcher;
 import org.junit.platform.launcher.LauncherDiscoveryRequest;
-import org.junit.platform.launcher.core.LauncherConfig;
-import org.junit.platform.launcher.core.LauncherDiscoveryRequestBuilder;
-import org.junit.platform.launcher.core.LauncherFactory;
 import org.junit.runner.notification.RunListener;
 import org.osgi.framework.BundleContext;
 
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.stream.Stream;
 
 import static org.junit.platform.engine.discovery.DiscoverySelectors.selectMethod;
 
@@ -73,39 +65,10 @@ public class JUnit5TestExecutionStrategy implements TestExecutionStrategy {
 
     @Override
     public void execute(TestSelector selector, RunListener runListener) throws Exception {
-        Launcher launcher = createLauncher(runListener, testEngineTracker.getAvailableTestEngines());
+        Launcher launcher = JUnitPlatformHelper.createLauncher(testEngineTracker.getAvailableTestEngines());
         final LauncherDiscoveryRequest request = testsManager.createTestRequest(selector,
-                JUnit5TestExecutionStrategy::methodRequest,
-                JUnit5TestExecutionStrategy::classesRequest);
-        launcher.execute(request);
-    }
-
-    @NotNull
-    public static Launcher createLauncher(RunListener runListener, TestEngine... availableTestEngines) {
-        return LauncherFactory.create(
-                LauncherConfig.builder()
-                        .addTestEngines(availableTestEngines)
-                        .addTestExecutionListeners(new RunListenerAdapter(runListener))
-                        .enableTestEngineAutoRegistration(false)
-                        .enableTestExecutionListenerAutoRegistration(false)
-                        .build()
-        );
-    }
-
-    @NotNull
-    public static LauncherDiscoveryRequest methodRequest(Class<?> testClass, String testMethodName) {
-        return LauncherDiscoveryRequestBuilder.request()
-                .selectors(selectMethod(testClass, testMethodName))
-                .build();
-    }
-
-    @NotNull
-    public static LauncherDiscoveryRequest classesRequest(Class<?>... testClasses) {
-        final DiscoverySelector[] selectors = Stream.of(testClasses)
-                .map(DiscoverySelectors::selectClass)
-                .toArray(DiscoverySelector[]::new);
-        return LauncherDiscoveryRequestBuilder.request()
-                .selectors(selectors)
-                .build();
+                JUnitPlatformHelper::methodRequest,
+                JUnitPlatformHelper::classesRequest);
+        launcher.execute(request, new RunListenerAdapter(runListener));
     }
 }
