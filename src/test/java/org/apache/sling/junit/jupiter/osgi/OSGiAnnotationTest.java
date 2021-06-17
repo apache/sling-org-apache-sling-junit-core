@@ -26,7 +26,10 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.extension.Extension;
+import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.api.extension.ParameterResolutionException;
+import org.junit.jupiter.api.extension.TestWatcher;
 import org.junit.jupiter.engine.JupiterTestEngine;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -41,11 +44,14 @@ import org.opentest4j.MultipleFailuresError;
 import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.FrameworkUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
 import java.util.Collection;
 import java.util.List;
+import java.util.Objects;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -79,7 +85,33 @@ import static org.junit.platform.commons.support.AnnotationSupport.findAnnotated
  * test.
  */
 @ExtendWith(OsgiContextExtension.class)
+@ExtendWith(OSGiAnnotationTest.LoggingReporter.class)
 public class OSGiAnnotationTest {
+
+    public static class LoggingReporter implements TestWatcher {
+
+        @Override
+        public void testSuccessful(ExtensionContext context) {
+            LOG.info("Test success: {}", context.getDisplayName());
+        }
+
+        @Override
+        public void testFailed(ExtensionContext context, Throwable cause) {
+            LOG.info("Test failure: {}", context.getDisplayName(), cause);
+        }
+
+        private static String describeTest(ExtensionContext context) {
+            final String methodName = context.getRequiredTestMethod().getName();
+            final String displayName = context.getDisplayName();
+            if (displayName.startsWith(methodName)) {
+                return context.getRequiredTestClass().getSimpleName() + '#' + displayName;
+            } else {
+                return context.getRequiredTestClass().getSimpleName() + '#' + methodName + "() -> " + displayName;
+            }
+        }
+    }
+
+    private static final Logger LOG = LoggerFactory.getLogger(OSGiAnnotationTest.class);
 
     private static final JupiterTestEngine JUPITER_TEST_ENGINE = new JupiterTestEngine();
 
