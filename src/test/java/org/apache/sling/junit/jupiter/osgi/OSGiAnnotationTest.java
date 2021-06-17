@@ -285,9 +285,10 @@ public class OSGiAnnotationTest {
             case 0:
                 break;
             case 1:
-                fail(failures.get(0).getException());
+                fail("Got one failure instead of none", failures.get(0).getException());
             default:
-                throw new MultipleFailuresError(null, failures.stream().map(TestExecutionSummary.Failure::getException).collect(Collectors.toList()));
+                fail("Got " + failures.size() + " failures instead of none",
+                        new MultipleFailuresError(null, failures.stream().map(TestExecutionSummary.Failure::getException).collect(Collectors.toList())));
         }
     }
 
