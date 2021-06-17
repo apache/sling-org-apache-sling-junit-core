@@ -7,3 +7,4 @@
 This module is part of the [Apache Sling](https://sling.apache.org) project.
 
 Runs JUnit tests in an OSGi framework and provides the JUnit libraries
+
