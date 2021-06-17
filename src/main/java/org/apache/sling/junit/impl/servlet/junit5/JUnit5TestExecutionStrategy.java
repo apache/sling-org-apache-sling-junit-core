@@ -30,8 +30,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-import static org.junit.platform.engine.discovery.DiscoverySelectors.selectMethod;
-
 public class JUnit5TestExecutionStrategy implements TestExecutionStrategy {
 
     // we assume that if we can load these two classes, the setup is ok for junit 5

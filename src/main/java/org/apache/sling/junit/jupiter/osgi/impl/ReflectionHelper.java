@@ -20,7 +20,6 @@ package org.apache.sling.junit.jupiter.osgi.impl;
 
 import org.apache.commons.lang3.reflect.TypeUtils;
 import org.jetbrains.annotations.NotNull;
-import org.junit.platform.commons.util.Preconditions;
 
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
@@ -28,12 +27,14 @@ import java.lang.reflect.TypeVariable;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * Utility class used for resolving type-arguments to concrete types.
  */
 public class ReflectionHelper {
 
+    @SuppressWarnings("java:S1452") // generic wildcard type is returned from TypeUtils.determineTypeArguments()
     public static Map<TypeVariable<?>, Type> determineTypeArguments(@NotNull Class<?> clazz) {
         final Map<TypeVariable<?>, Type> typeVariableTypeMap = new HashMap<>();
         determineTypeArguments(clazz, typeVariableTypeMap);
@@ -52,12 +53,7 @@ public class ReflectionHelper {
             }
             determineTypeArguments((Class<?>) rawType, typeVariableTypeMap);
         } else if (genericSuperclass instanceof Class<?>) {
-            if (genericSuperclass == Object.class && ((Class<?>) genericSuperclass).isArray()) {
-                // TODO: handle array types, see docs for Class#getGenericSuperclass()
-                throw new UnsupportedOperationException("Unsupported case where genericSuperclass == Object.class");
-            } else {
-                determineTypeArguments((Class<?>) genericSuperclass, typeVariableTypeMap);
-            }
+            determineTypeArguments((Class<?>) genericSuperclass, typeVariableTypeMap);
         } else if (genericSuperclass == null) {
             final Type[] genericInterfaces = clazz.getGenericInterfaces();
             for (Type genericInterface : genericInterfaces) {
@@ -71,17 +67,12 @@ public class ReflectionHelper {
         }
     }
 
-
     @NotNull
-    @SuppressWarnings("java:S2637")
     public static ParameterizedType parameterizedTypeForBaseClass(@NotNull Class<?> baseClass, @NotNull Class<?> clazz) {
         ParameterizedType parameterizedType = findParameterizedTypeForBaseClass(baseClass, clazz);
-        Preconditions.notNull(parameterizedType,
-                () -> String.format(
-                        "Failed to discover type supported by %s; "
-                                + "potentially caused by lacking parameterized type in class declaration.",
-                        clazz.getName()));
-        return parameterizedType;
+        return Objects.requireNonNull(parameterizedType, () -> String.format(
+                "Failed to discover type supported by %s; may be caused by lacking parameterized type in class declaration.",
+                clazz.getName()));
     }
 
     private static ParameterizedType findParameterizedTypeForBaseClass(Class<?> baseClass, Class<?> clazz) {
@@ -101,4 +92,6 @@ public class ReflectionHelper {
         }
         return findParameterizedTypeForBaseClass(baseClass, superclass);
     }
+
+    private ReflectionHelper() {}
 }

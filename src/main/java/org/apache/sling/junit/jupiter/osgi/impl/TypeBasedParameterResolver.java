@@ -38,7 +38,7 @@ public abstract class TypeBasedParameterResolver<T> extends AbstractTypeBasedPar
 
     private final Type supportedType;
 
-    public TypeBasedParameterResolver() {
+    protected TypeBasedParameterResolver() {
         ParameterizedType parameterizedType = parameterizedTypeForBaseClass(TypeBasedParameterResolver.class, getClass());
         this.supportedType = parameterizedType.getActualTypeArguments()[0];
     }

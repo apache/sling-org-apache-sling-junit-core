@@ -40,6 +40,7 @@ import java.lang.reflect.Type;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -217,7 +218,7 @@ public class ServiceParameterResolver extends AbstractTypeBasedParameterResolver
             public ServiceReference<T>[] getServiceReferences() {
                 return Optional.ofNullable(super.getServiceReferences())
                         .map(serviceReferences -> {
-                            Arrays.sort(serviceReferences);
+                            Arrays.sort(serviceReferences, Comparator.reverseOrder());
                             return serviceReferences;
                         })
                         .orElse(null);

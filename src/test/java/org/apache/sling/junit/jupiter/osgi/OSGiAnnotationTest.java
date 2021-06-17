@@ -79,7 +79,7 @@ import static org.junit.platform.commons.support.AnnotationSupport.findAnnotated
  * test.
  */
 @ExtendWith(OsgiContextExtension.class)
-public class OSGiAnnotationTest {
+class OSGiAnnotationTest {
 
     private static final JupiterTestEngine JUPITER_TEST_ENGINE = new JupiterTestEngine();
 
@@ -134,42 +134,27 @@ public class OSGiAnnotationTest {
         });
     }
 
-    @Test
-    void injectServiceAsAnnotatedMethodParameterWithExplicitClass() {
-        osgiContext.registerService(ServiceInterface.class, new ServiceA());
-        withMockedFrameworkUtil(() -> {
-            assertNoFailures(PseudoTestServiceMethodInjection.class, "annotatedParameterWithExplicitClass");
-        });
+    @SuppressWarnings("unused")
+    static Stream<Arguments> serviceInjectionVariantsTests() {
+        return Stream.of(PseudoTestServiceMethodInjection.class)
+                .flatMap(namedMethods(
+                        "annotatedParameterWithExplicitClass",
+                        "annotatedParameterWithImpliedClass",
+                        "annotatedParameterWithExplicitClassMultiple",
+                        "annotatedParameterWithImpliedClassMultiple",
+                        "annotatedMethod"));
     }
 
-    @Test
-    void injectServiceAsAnnotatedMethodParameterWithImplicitClass() {
-        osgiContext.registerService(ServiceInterface.class, new ServiceA());
-        withMockedFrameworkUtil(() -> {
-            assertNoFailures(PseudoTestServiceMethodInjection.class, "annotatedParameterWithImpliedClass");
-        });
-    }
-
-    @Test
-    void injectServiceAsAnnotatedMethodParameterWithExplicitClassMultiple() {
-        osgiContext.registerService(ServiceInterface.class, new ServiceA(), "service.ranking", 1);
-        osgiContext.registerService(ServiceInterface.class, new ServiceC(), "service.ranking", 3);
+    @ParameterizedTest(name = "{0}#{2}")
+    @MethodSource("serviceInjectionVariantsTests")
+    void serviceInjectionVariants(String name, Class<?> testClass, String testMethodName) {
+        osgiContext.registerService(ServiceInterface.class, new ServiceA(), "service.ranking", 3);
+        osgiContext.registerService(ServiceInterface.class, new ServiceC(), "service.ranking", 1);
         osgiContext.registerService(ServiceInterface.class, new ServiceB(), "service.ranking", 2);
         withMockedFrameworkUtil(() -> {
-            assertNoFailures(PseudoTestServiceMethodInjection.class, "annotatedParameterWithExplicitClassMultiple");
+            assertNoFailures(testClass, testMethodName);
         });
     }
-
-    @Test
-    void injectServiceAsAnnotatedMethodParameterWithImplicitClassMultiple() {
-        osgiContext.registerService(ServiceInterface.class, new ServiceA(), "service.ranking", 1);
-        osgiContext.registerService(ServiceInterface.class, new ServiceC(), "service.ranking", 3);
-        osgiContext.registerService(ServiceInterface.class, new ServiceB(), "service.ranking", 2);
-        withMockedFrameworkUtil(() -> {
-            assertNoFailures(PseudoTestServiceMethodInjection.class, "annotatedParameterWithImpliedClassMultiple");
-        });
-    }
-
 
     @Test
     void injectServiceAsAnnotatedMethodParameterWithImplicitClassEmptyMultiple() {
@@ -190,14 +175,6 @@ public class OSGiAnnotationTest {
             assertThat(exception, instanceOf(ParameterResolutionException.class));
             assertThat(exception.getMessage(), equalTo("Mismatched types in annotation and parameter. " +
                     "Annotation type is \"ServiceB\", parameter type is \"ServiceInterface\""));
-        });
-    }
-
-    @Test
-    void injectServiceAsParameterOfAnnotatedMethod() {
-        osgiContext.registerService(ServiceInterface.class, new ServiceA());
-        withMockedFrameworkUtil(() -> {
-            assertNoFailures(PseudoTestServiceMethodInjection.class, "annotatedMethod");
         });
     }
 

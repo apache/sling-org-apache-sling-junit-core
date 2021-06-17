@@ -58,7 +58,7 @@ public abstract class AbstractTypeBasedParameterResolver implements ParameterRes
         Type type = parameterContext.getParameter().getParameterizedType();
         if (type instanceof TypeVariable) {
             final Map<TypeVariable<?>, Type> typeVariableTypeMap = determineTypeArguments(extensionContext.getRequiredTestClass());
-            return typeVariableTypeMap.getOrDefault((TypeVariable<?>) type, type);
+            return typeVariableTypeMap.getOrDefault(type, type);
         } else {
             return type;
         }
