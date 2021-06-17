@@ -73,6 +73,7 @@ public class ReflectionHelper {
 
 
     @NotNull
+    @SuppressWarnings("java:S2637")
     public static ParameterizedType parameterizedTypeForBaseClass(@NotNull Class<?> baseClass, @NotNull Class<?> clazz) {
         ParameterizedType parameterizedType = findParameterizedTypeForBaseClass(baseClass, clazz);
         Preconditions.notNull(parameterizedType,
