@@ -131,7 +131,9 @@ public class HtmlRenderer extends RunListener implements Renderer,RendererFactor
     @Override
     public void testAssumptionFailure(Failure failure) {
         super.testAssumptionFailure(failure);
-        output.print("<p class='ignored'><h3>TEST ABORTED</h3><b>");
+        output.print("<p class='ignored'><h3>TEST ABORTED: ");
+        HtmlFilter.escape(output, failure.getTestHeader());
+        output.print("</h3><b>");
         String message = failure.getMessage();
         if (!message.startsWith("Assumption failed: ")) {
             message = "Assumption failed: " + message;

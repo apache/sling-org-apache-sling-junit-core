@@ -55,13 +55,16 @@ public class HtmlRendererTest {
     public void testInvalidAssumption(String prefix, TestEngine testEngine) {
         String html = renderHtmlOutput(testEngine, ExampleTestCases.class, prefix + "FailedAssumption");
         assertThat(html, Matchers.containsString(
-                String.format("<p class='ignored'><h3>TEST ABORTED</h3><b>Assumption failed: %s</b></p>",
+                String.format("<p class='ignored'><h3>TEST ABORTED: " +
+                                "%sFailedAssumption(org.apache.sling.junit.impl.servlet.HtmlRendererTest$ExampleTestCases)</h3>" +
+                                "<b>Assumption failed: %s</b></p>",
+                        prefix,
                         ExampleTestCases.ASSUMPTION_IS_ALWAYS_INVALID)));
         assertThat(html, Matchers.containsString("<span class='testCountNonZero'>tests:1</span>"));
         assertThat(html, Matchers.containsString("<span class='abortedCountNonZero'>aborted:1</span>"));
     }
 
-    @ParameterizedTest
+    @ParameterizedTest(name = "{0}")
     @MethodSource("testEngines")
     public void testFailure(String prefix, TestEngine testEngine) {
         final String failedAssertion = "FailedAssertion";
@@ -74,7 +77,7 @@ public class HtmlRendererTest {
         assertThat(html, Matchers.containsString("<span class='failureCountNonZero'>failures:1</span>"));
     }
 
-    @ParameterizedTest
+    @ParameterizedTest(name = "{0}")
     @MethodSource("testEngines")
     public void testSuccess(String prefix, TestEngine testEngine) {
         String html = renderHtmlOutput(testEngine, ExampleTestCases.class, prefix + "Success");
@@ -82,7 +85,7 @@ public class HtmlRendererTest {
         assertThat(html, Matchers.containsString("<span class='failureCountZero'>failures:0</span>"));
     }
 
-    private static String renderHtmlOutput(TestEngine testEngine, Class<ExampleTestCases> testClass, String methodName) {
+    private static String renderHtmlOutput(TestEngine testEngine, Class<?> testClass, String methodName) {
         final StringWriter out = new StringWriter();
         final HtmlRenderer htmlRenderer = new HtmlRenderer();
         htmlRenderer.setWriter(new PrintWriter(out));
