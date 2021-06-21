@@ -18,9 +18,6 @@
  */
 package org.apache.sling.junit.jupiter.osgi;
 
-import org.apache.sling.junit.jupiter.osgi.impl.BundleContextParameterResolver;
-import org.apache.sling.junit.jupiter.osgi.impl.BundleParameterResolver;
-import org.apache.sling.junit.jupiter.osgi.impl.ServiceParameterResolver;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleContext;

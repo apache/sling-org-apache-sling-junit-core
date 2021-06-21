@@ -16,9 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.sling.junit.jupiter.osgi.impl;
+package org.apache.sling.junit.jupiter.osgi;
 
-import org.apache.sling.junit.jupiter.osgi.Service;
+import org.apache.sling.junit.jupiter.osgi.impl.AbstractTypeBasedParameterResolver;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.extension.ExtensionContext;
@@ -50,7 +50,7 @@ import java.util.stream.Stream;
 
 import static org.junit.platform.commons.support.AnnotationSupport.findAnnotation;
 
-public class ServiceParameterResolver extends AbstractTypeBasedParameterResolver {
+class ServiceParameterResolver extends AbstractTypeBasedParameterResolver {
 
     private static final ExtensionContext.Namespace NAMESPACE = ExtensionContext.Namespace.create(ServiceParameterResolver.class);
 
