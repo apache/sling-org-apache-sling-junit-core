@@ -19,18 +19,17 @@
 package org.apache.sling.junit.jupiter.osgi;
 
 import org.apache.sling.junit.impl.servlet.junit5.JUnitPlatformHelper;
+import org.apache.sling.junit.jupiter.osgi.utils.MetaTest;
 import org.apache.sling.testing.mock.osgi.junit5.OsgiContext;
 import org.apache.sling.testing.mock.osgi.junit5.OsgiContextExtension;
-import org.hamcrest.Matchers;
+import org.hamcrest.Matcher;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.extension.ParameterResolutionException;
 import org.junit.jupiter.engine.JupiterTestEngine;
-import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.platform.commons.annotation.Testable;
 import org.junit.platform.commons.support.HierarchyTraversalMode;
 import org.junit.platform.launcher.listeners.SummaryGeneratingListener;
@@ -44,6 +43,7 @@ import org.osgi.framework.FrameworkUtil;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
 import java.util.Collection;
 import java.util.List;
 import java.util.function.Function;
@@ -51,16 +51,23 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static java.util.Arrays.asList;
+import static org.apache.sling.junit.jupiter.osgi.ServiceCardinality.MANDATORY;
+import static org.apache.sling.junit.jupiter.osgi.ServiceCardinality.OPTIONAL;
 import static org.apache.sling.junit.jupiter.osgi.impl.ReflectionHelper.parameterizedTypeForBaseClass;
+import static org.apache.sling.junit.jupiter.osgi.utils.MemberMatcher.hasMember;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.allOf;
-import static org.hamcrest.Matchers.anyOf;
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.empty;
+import static org.hamcrest.Matchers.endsWith;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.instanceOf;
+import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.nullValue;
+import static org.hamcrest.Matchers.sameInstance;
+import static org.hamcrest.Matchers.startsWith;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
@@ -85,32 +92,19 @@ class OSGiAnnotationTest {
 
     OsgiContext osgiContext = new OsgiContext();
 
-    @SuppressWarnings("unused") // provides parameters
-    static Stream<Arguments> frameworkObjectsInjectionTests() {
-        return Stream.of(PseudoTestBundleInjection.class, PseudoTestBundleContextInjection.class)
-                .flatMap(OSGiAnnotationTest::allTestMethods);
-    }
-
-    @ParameterizedTest(name = "{0}#{2}")
-    @MethodSource("frameworkObjectsInjectionTests")
+    @MetaTest({BundleInjection.class, BundleContextInjection.class})
     void injectFrameworkObjects(String name, Class<?> testClass, String testMethodName) {
         withMockedFrameworkUtil(() -> {
             assertNoFailures(testClass, testMethodName);
         });
     }
 
-    @SuppressWarnings("unused") // provides parameters
-    static Stream<Arguments> serviceInjectionTests() {
-        return Stream
-                .of(
-                        PseudoTestServiceInjectionGloballyAnnotated.class,
-                        PseudoTestServiceInjectionGloballyAnnotatedWithFilter.class,
-                        PseudoTestInheritedServiceInjectionGloballyAnnotated.class)
-                .flatMap(OSGiAnnotationTest::allTestMethods);
-    }
-
-    @ParameterizedTest(name = "{0}#{2}")
-    @MethodSource("serviceInjectionTests")
+    @MetaTest({ServiceInjectionGloballyAnnotated.class,
+            InheritedServiceInjectionGloballyAnnotated.class,
+            ServiceInjectionGloballyAnnotatedWithFilter.class,
+            MultipleServiceInjectionParameterAnnotated.class,
+            MultipleServiceInjectionMethodAnnotated.class,
+            MultipleServiceInjectionClassAnnotated.class})
     void injectServices(String name, Class<?> testClass, String testMethodName) {
         osgiContext.registerService(ServiceInterface.class, new ServiceA(), "foo", "quz");
         withMockedFrameworkUtil(() -> {
@@ -118,36 +112,47 @@ class OSGiAnnotationTest {
         });
     }
 
-    @SuppressWarnings("unused") // provides parameters
-    static Stream<Arguments> failConstructionDueToMissingServiceInjectionTests() {
-        return Stream.of(PseudoTestServiceInjectionNotAnnotated.class, PseudoTestServiceInjectionGloballyAnnotatedWithFilter.class)
-                .flatMap(namedMethods("injectedConstructorParameter"));
-    }
-
-    @ParameterizedTest(name = "{0}#{2}")
-    @MethodSource("failConstructionDueToMissingServiceInjectionTests")
-    void failConstructionDueToMissingServiceInjection(String name, Class<?> testClass, String testMethodName) {
-        // setup service with non-matching filter
-        osgiContext.registerService(ServiceInterface.class, new ServiceA(), "foo", "no match");
+    @MetaTest(value = ServiceInjectionNoServiceAnnotation.class, methods = "injectedConstructorParameter")
+    void failConstructionDueToMissingServiceAnnotation(String name, Class<?> testClass, String testMethodName) {
+        osgiContext.registerService(ServiceInterface.class, new ServiceA());
         withMockedFrameworkUtil(() -> {
-            assertTestConstructionFailsDueToMissingService(testClass, testMethodName);
+            assertFailure(testClass, testMethodName, ParameterResolutionException.class,
+                    allOf(containsString("No ParameterResolver registered for parameter "), containsString(" in constructor ")));
         });
     }
 
-    @SuppressWarnings("unused")
-    static Stream<Arguments> serviceInjectionVariantsTests() {
-        return Stream.of(PseudoTestServiceMethodInjection.class)
-                .flatMap(namedMethods(
-                        "annotatedParameterWithExplicitClass",
-                        "annotatedParameterWithImpliedClass",
-                        "annotatedParameterWithExplicitClassMultiple",
-                        "annotatedParameterWithImpliedClassMultiple",
-                        "annotatedMethod"));
+    @MetaTest(value = ServiceInjectionGloballyAnnotatedWithFilter.class, methods = "injectedConstructorParameter")
+    void failConstructionDueToMissingService(String name, Class<?> testClass, String testMethodName) {
+        // setup service with non-matching filter
+        osgiContext.registerService(ServiceInterface.class, new ServiceA(), "foo", "no match");
+        withMockedFrameworkUtil(() -> {
+            assertFailure(testClass, testMethodName, ParameterResolutionException.class,
+                    allOf(containsString("No service of type "), containsString(" available")));
+        });
     }
 
-    @ParameterizedTest(name = "{0}#{2}")
-    @MethodSource("serviceInjectionVariantsTests")
-    void serviceInjectionVariants(String name, Class<?> testClass, String testMethodName) {
+    @MetaTest(MultipleAnnotationsOnParameterFailure.class)
+    void failMultipleAnnotationsOnParameter(String name, Class<?> testClass, String testMethodName) {
+        withMockedFrameworkUtil(() -> {
+            assertFailure(testClass, testMethodName, ParameterResolutionException.class,
+                    allOf(
+                            startsWith("Parameters must not be annotated with multiple @Service annotations: "),
+                            containsString("MultipleAnnotationsOnParameterFailure"), // class name
+                            containsString("multipleAnnotationsFailure"), // method name
+                            containsString("MissingServiceInterface"))); // parameter type
+        });
+    }
+
+    @MetaTest(InvalidFilterExpressionFailure.class)
+    void failInvalidFilterExpression(String name, Class<?> testClass, String testMethodName) {
+        withMockedFrameworkUtil(() -> {
+            assertFailure(testClass, testMethodName, ParameterResolutionException.class,
+                    equalTo("Invalid filter expression used in @Service annotation :\"(abc = def\""));
+        });
+    }
+
+    @MetaTest(ServiceMethodInjection.class)
+    void allServiceMethodInjectionTests(String name, Class<?> testClass, String testMethodName) {
         osgiContext.registerService(ServiceInterface.class, new ServiceA(), "service.ranking", 3);
         osgiContext.registerService(ServiceInterface.class, new ServiceC(), "service.ranking", 1);
         osgiContext.registerService(ServiceInterface.class, new ServiceB(), "service.ranking", 2);
@@ -156,30 +161,149 @@ class OSGiAnnotationTest {
         });
     }
 
-    @Test
-    void injectServiceAsAnnotatedMethodParameterWithImplicitClassEmptyMultiple() {
+    @MetaTest(value = ServiceMethodInjection.class, methods = {
+            "annotatedParameterWithImpliedClassOptionalMultiple",
+            "annotatedParameterWithImpliedClassExplicitOptionalMultiple"
+    })
+    void injectServiceAsAnnotatedMethodParameterWithImplicitClassEmptyMultiple(String name, Class<?> testClass, String testMethodName) {
         withMockedFrameworkUtil(() -> {
-            assertNoFailures(PseudoTestServiceMethodInjection.class, "annotatedParameterWithImpliedClassEmptyMultiple");
+            assertNoFailures(testClass, testMethodName);
         });
     }
 
-    @Test
-    void injectServiceAsAnnotatedMethodParameterWithIncorrectExplicitClassMultiple() {
+    @MetaTest(MismatchedServiceTypeOnAnnotatedParameter.class)
+    void failOnMismatchedServiceType(String name, Class<?> testClass, String testMethodName) {
         osgiContext.registerService(ServiceInterface.class, new ServiceA(), "service.ranking", 1);
         osgiContext.registerService(ServiceInterface.class, new ServiceC(), "service.ranking", 3);
         osgiContext.registerService(ServiceInterface.class, new ServiceB(), "service.ranking", 2);
         withMockedFrameworkUtil(() -> {
-            final TestExecutionSummary summary = executeAndSummarize(PseudoTestServiceMethodInjection.class, "annotatedParameterWithIncorrectExplicitClassMultiple");
-            assertEquals(1, summary.getTestsFailedCount(), "expected test failure count");
-            final Throwable exception = summary.getFailures().get(0).getException();
-            assertThat(exception, instanceOf(ParameterResolutionException.class));
-            assertThat(exception.getMessage(), equalTo("Mismatched types in annotation and parameter. " +
-                    "Annotation type is \"ServiceB\", parameter type is \"ServiceInterface\""));
+            assertFailure(testClass, testMethodName, ParameterResolutionException.class,
+                    equalTo("Mismatched types in annotation and parameter. " +
+                            "Annotation type is \"ServiceB\", parameter type is \"ServiceInterface\""));
         });
     }
 
+    @MetaTest(MissingMandatoryServiceInjectionOnAnnotatedParameter.class)
+    void failOnMissingMandatoryService(String name, Class<?> testClass, String testMethodName) {
+        osgiContext.registerService(ServiceInterface.class, new ServiceA(), "service.ranking", 1);
+        osgiContext.registerService(ServiceInterface.class, new ServiceC(), "service.ranking", 3);
+        osgiContext.registerService(ServiceInterface.class, new ServiceB(), "service.ranking", 2);
+        withMockedFrameworkUtil(() -> {
+            assertFailure(testClass, testMethodName, ParameterResolutionException.class,
+                    equalTo("No service of type \"org.apache.sling.junit." +
+                            "jupiter.osgi.OSGiAnnotationTest$MissingServiceInterface\" available"));
+        });
+    }
+
+    @MetaTest(MissingFilteredMandatoryServiceInjectionOnAnnotatedParameter.class)
+    void failOnMissingFilteredService(String name, Class<?> testClass, String testMethodName) {
+        osgiContext.registerService(ServiceInterface.class, new ServiceA(), "service.ranking", 1);
+        osgiContext.registerService(ServiceInterface.class, new ServiceC(), "service.ranking", 3);
+        osgiContext.registerService(ServiceInterface.class, new ServiceB(), "service.ranking", 2);
+        withMockedFrameworkUtil(() -> {
+            assertFailure(testClass, testMethodName, ParameterResolutionException.class,
+                    equalTo("No service of type \"org.apache.sling.junit." +
+                            "jupiter.osgi.OSGiAnnotationTest$ServiceInterface\" " +
+                            "with filter \"(service.ranking=100)\" available"));
+        });
+    }
+
+
+    @MetaTest({BundleInjection.class, BundleContextInjection.class, ServiceInjectionGloballyAnnotated.class})
+    void failOutsideOSGiEnvironment(String name, Class<?> testClass, String testMethodName) {
+        assertFailure(testClass, testMethodName, ParameterResolutionException.class,
+                endsWith("@OSGi and @Service annotations can only be used with tests running in an OSGi environment"));
+    }
+
+    private void assertFailure(Class<?> testClass, String testMethodName, Class<? extends Throwable> exceptionClass, Matcher<String> exceptionMessageMatcher) {
+        final TestExecutionSummary summary = executeAndSummarize(testClass, testMethodName);
+        final List<TestExecutionSummary.Failure> failures = summary.getFailures().stream().filter(failure -> failure.getTestIdentifier().isTest()).collect(Collectors.toList());
+        assertThat(failures, contains(
+                hasMember("getException()", TestExecutionSummary.Failure::getException,
+                    allOf(instanceOf(exceptionClass), hasMember("getMessage()", Throwable::getMessage, exceptionMessageMatcher)))));
+    }
+
     @OSGi
-    static class PseudoTestServiceMethodInjection {
+    static class MismatchedServiceTypeOnAnnotatedParameter {
+
+        @Test
+        void unary(@Service(ServiceB.class) ServiceInterface service) {
+            failMismatchedServiceType();
+        }
+
+        @Test
+        void multiple(@Service(ServiceB.class) List<ServiceInterface> services) {
+            failMismatchedServiceType();
+        }
+
+        private static void failMismatchedServiceType() {
+            fail("Method not be called due to mismatching service types");
+        }
+    }
+
+    @OSGi
+    @Service(value = ServiceInterface.class, cardinality = MANDATORY, filter = "(service.ranking=100)")
+    static class MissingFilteredMandatoryServiceInjectionOnAnnotatedParameter {
+
+        @Test
+        void missingUnaryFilteredService(ServiceInterface service) {
+            failMissing();
+        }
+
+        @Test
+        void missingMultipleFilteredService(List<ServiceInterface> services) {
+            failMissing();
+        }
+
+        private static void failMissing() {
+            fail("Method must not be called due to missing service with matching filter");
+        }
+
+    }
+
+    @OSGi
+    static class MissingMandatoryServiceInjectionOnAnnotatedParameter {
+
+        @Test
+        void missingImplictlyMandatoryUnaryService(@Service MissingServiceInterface service) {
+            failMandatory();
+        }
+
+        @Test
+        void missingExplicitlyMandatoryUnaryService(@Service(cardinality = MANDATORY) MissingServiceInterface service) {
+            failMandatory();
+        }
+
+        @Test
+        void missingMandatoryMultipleService(@Service(cardinality = MANDATORY) List<MissingServiceInterface> services) {
+            failMandatory();
+        }
+
+        private static void failMandatory() {
+            fail("Method must not be called due to missing mandatory service");
+        }
+    }
+
+    @OSGi
+    static class ServiceMethodInjection {
+
+        @Test
+        void annotatedParameterWithMissingOptionalService(@Service(cardinality = OPTIONAL) MissingServiceInterface service) {
+            assertThat(service, nullValue());
+        }
+
+        @Test
+        void annotatedParameterWithImpliedClassExplicitOptionalMultiple(@Service(cardinality = OPTIONAL) List<MissingServiceInterface> services) {
+            assertThat(services, instanceOf(List.class));
+            assertThat(services, empty());
+        }
+
+        @Test
+        void annotatedParameterWithImpliedClassOptionalMultiple(@Service List<MissingServiceInterface> services) {
+            assertThat(services, instanceOf(List.class));
+            assertThat(services, empty());
+        }
+
         @Test
         void annotatedParameterWithExplicitClass(@Service(ServiceInterface.class) ServiceInterface serviceA) {
             assertThat(serviceA, instanceOf(ServiceA.class));
@@ -203,15 +327,14 @@ class OSGiAnnotationTest {
         }
 
         @Test
-        void annotatedParameterWithImpliedClassEmptyMultiple(@Service List<ServiceInterface> services) {
+        void annotatedParameterWithImpliedClassExplicitMandatoryMultiple(@Service(cardinality = MANDATORY) List<ServiceInterface> services) {
             assertThat(services, instanceOf(List.class));
-            assertThat(services, empty());
+            assertThat(services, contains(asList(instanceOf(ServiceA.class), instanceOf(ServiceB.class), instanceOf(ServiceC.class))));
         }
 
         @Test
-        void annotatedParameterWithIncorrectExplicitClassMultiple(@Service(ServiceB.class) List<ServiceInterface> services) {
-            assertThat(services, instanceOf(List.class));
-            assertThat(services, contains(instanceOf(ServiceA.class)));
+        void annotatedParameterWithExistingOptionalService(@Service(cardinality = OPTIONAL) ServiceInterface service) {
+            assertThat(service, instanceOf(ServiceA.class));
         }
 
         @Test
@@ -269,78 +392,127 @@ class OSGiAnnotationTest {
         }
     }
 
-    private void assertTestConstructionFailsDueToMissingService(Class<?> testClass, String testMethodName) {
-        final TestExecutionSummary summary = executeAndSummarize(testClass, testMethodName);
-        final List<TestExecutionSummary.Failure> failures = summary.getFailures();
-        assertEquals(1, failures.size(), "number of test failures");
-        final TestExecutionSummary.Failure failure = failures.get(0);
-        final Throwable exception = failure.getException();
-        assertThat(exception, Matchers.instanceOf(ParameterResolutionException.class));
-        assertThat(exception.getMessage(), anyOf(
-                allOf(containsString("No ParameterResolver registered for parameter "), containsString(" in constructor ")),
-                // allOf(containsString("Failed to resolve parameter "), containsString(" in constructor ")),
-                allOf(containsString("No service of type "), containsString(" available"))
-        ));
-    }
-
     @OSGi
-    static class PseudoTestBundleContextInjection extends Injection<BundleContext> {
-        public PseudoTestBundleContextInjection(BundleContext object) {
+    static class BundleContextInjection extends Injection<BundleContext> {
+        public BundleContextInjection(BundleContext object) {
             super(object);
         }
     }
 
     @OSGi
-    static class PseudoTestBundleInjection extends Injection<Bundle> {
-        public PseudoTestBundleInjection(Bundle object) {
+    static class BundleInjection extends Injection<Bundle> {
+        public BundleInjection(Bundle object) {
             super(object);
         }
     }
 
     @OSGi
-    static class PseudoTestServiceInjectionNotAnnotated extends Injection<ServiceInterface> {
-        public PseudoTestServiceInjectionNotAnnotated(ServiceInterface object) {
+    static class ServiceInjectionNoServiceAnnotation extends Injection<ServiceInterface> {
+        public ServiceInjectionNoServiceAnnotation(ServiceInterface object) {
             super(object);
-        }
-
-        @Override
-        void injectedMethodParameter(ServiceInterface objectFromMethodInjection) {
-            super.injectedMethodParameter(objectFromMethodInjection);
         }
     }
 
     @OSGi
     @Service(ServiceInterface.class)
-    static class PseudoTestServiceInjectionGloballyAnnotated extends Injection<ServiceInterface> {
-        public PseudoTestServiceInjectionGloballyAnnotated(ServiceInterface object) {
-            super(object);
-        }
-    }
-
-    static class PseudoTestInheritedServiceInjectionGloballyAnnotated extends PseudoTestServiceInjectionGloballyAnnotated {
-        public PseudoTestInheritedServiceInjectionGloballyAnnotated(ServiceInterface object) {
+    static class ServiceInjectionGloballyAnnotated extends Injection<ServiceInterface> {
+        public ServiceInjectionGloballyAnnotated(ServiceInterface object) {
             super(object);
         }
     }
 
     @OSGi
     @Service(value = ServiceInterface.class, filter = "(foo=quz)")
-    static class PseudoTestServiceInjectionGloballyAnnotatedWithFilter extends Injection<ServiceInterface> {
-        public PseudoTestServiceInjectionGloballyAnnotatedWithFilter(ServiceInterface object) {
+    static class ServiceInjectionGloballyAnnotatedWithFilter extends Injection<ServiceInterface> {
+        public ServiceInjectionGloballyAnnotatedWithFilter(ServiceInterface object) {
             super(object);
+        }
+    }
+
+    static class InheritedServiceInjectionGloballyAnnotated extends ServiceInjectionGloballyAnnotated {
+        public InheritedServiceInjectionGloballyAnnotated(ServiceInterface object) {
+            super(object);
+        }
+    }
+
+    @OSGi
+    static class MultipleServiceInjectionParameterAnnotated extends AbstractMultipleServiceInjection {
+        public MultipleServiceInjectionParameterAnnotated(@Service List<ServiceInterface> object) {
+            super(object);
+        }
+
+        @Override
+        void injectedMethodParameter(@Service List<ServiceInterface> objectFromMethodInjection) {
+            super.injectedMethodParameter(objectFromMethodInjection);
+        }
+    }
+
+    @OSGi
+    static class MultipleServiceInjectionMethodAnnotated extends AbstractMultipleServiceInjection {
+
+        @Service(ServiceInterface.class)
+        public MultipleServiceInjectionMethodAnnotated(List<ServiceInterface> object) {
+            super(object);
+        }
+
+        @Test @Override
+        @Service(ServiceInterface.class)
+        void injectedMethodParameter(List<ServiceInterface> objectFromMethodInjection) {
+            super.injectedMethodParameter(objectFromMethodInjection);
+        }
+    }
+
+    @OSGi
+    @Service(ServiceInterface.class)
+    static class MultipleServiceInjectionClassAnnotated extends AbstractMultipleServiceInjection {
+        public MultipleServiceInjectionClassAnnotated(List<ServiceInterface> object) {
+            super(object);
+        }
+    }
+
+    @OSGi
+    static class MultipleAnnotationsOnParameterFailure {
+        @Test
+        void multipleAnnotationsFailure(@Service @Service(MissingServiceInterface.class) MissingServiceInterface service) {
+            fail("Method must not be called due to duplicate @Service annotation on parameter");
+        }
+    }
+
+    @OSGi
+    static class InvalidFilterExpressionFailure {
+        @Test
+        void invalidFilterExpressionFailure(@Service(filter = "(abc = def") MissingServiceInterface service) {
+            fail("Method must not be called due to duplicate @Service annotation on parameter");
+        }
+    }
+
+    static abstract class AbstractMultipleServiceInjection extends Injection<List<ServiceInterface>> {
+
+        public AbstractMultipleServiceInjection(List<ServiceInterface> object) {
+            super(object);
+        }
+
+        @Test @Override
+        void injectedMethodParameter(List<ServiceInterface> objectFromMethodInjection) {
+            assertNotNull(objectFromMethodInjection, typeName + " method parameter");
+            assertEquals(objectFromConstructor, objectFromMethodInjection);
+            assertThat("number of services", objectFromMethodInjection.size(), is(1));
+            assertThat( "same service instance should be contained in the Lists injected into method and constructor",
+                    objectFromConstructor, contains(sameInstance(objectFromMethodInjection.get(0))));
         }
     }
 
     static abstract class Injection<T> {
 
-        T objectFromConstructor;
+        protected T objectFromConstructor;
 
-        private final String typeName;
+        protected final String typeName;
 
         public Injection(T object) {
             this.objectFromConstructor = object;
             final ParameterizedType parameterizedType = parameterizedTypeForBaseClass(Injection.class, getClass());
-            this.typeName = ((Class<?>) parameterizedType.getActualTypeArguments()[0]).getSimpleName();
+            final Type actualTypeArgument = parameterizedType.getActualTypeArguments()[0];
+            this.typeName = actualTypeArgument.getTypeName();
         }
 
         @Test
@@ -366,5 +538,8 @@ class OSGiAnnotationTest {
     }
 
     static class ServiceC implements ServiceInterface {
+    }
+
+    interface MissingServiceInterface {
     }
 }

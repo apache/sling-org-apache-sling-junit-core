@@ -45,35 +45,29 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Function;
-import java.util.function.Supplier;
 import java.util.stream.Stream;
-
-import static org.junit.platform.commons.support.AnnotationSupport.findAnnotation;
 
 class ServiceParameterResolver extends AbstractTypeBasedParameterResolver {
 
     private static final ExtensionContext.Namespace NAMESPACE = ExtensionContext.Namespace.create(ServiceParameterResolver.class);
 
     @Override
-    protected boolean supportsParameter(ParameterContext parameterContext, ExtensionContext extensionContext, Type resolvedParameterType) {
-        return computeServiceType(resolvedParameterType)
-                .flatMap(serviceType -> findServiceAnnotation(parameterContext, extensionContext, serviceType))
+    protected boolean supportsParameter(@NotNull ParameterContext parameterContext, @NotNull ExtensionContext extensionContext, @NotNull Type resolvedParameterType) {
+        final Optional<Service> service = computeServiceType(resolvedParameterType)
+                .flatMap(serviceType -> findServiceAnnotation(parameterContext, extensionContext, serviceType));
+        return service
                 .isPresent();
     }
 
     @Override
-    protected Object resolveParameter(ParameterContext parameterContext, ExtensionContext extensionContext, Type resolvedParameterType) {
-        return computeServiceType(resolvedParameterType)
-                .map(serviceType -> {
-                    final Optional<Service> serviceAnnotation = findServiceAnnotation(parameterContext, extensionContext, serviceType);
-                    return serviceAnnotation
-                            .map(ann -> toKey(serviceType, ann))
-                            .map(key -> extensionContext.getStore(NAMESPACE)
-                                    .getOrComputeIfAbsent(key, serviceHolderFactory(extensionContext, serviceType), ServiceHolder.class))
-                            .map(serviceHolder -> isMultiple(resolvedParameterType) ? serviceHolder.getServices() : serviceHolder.getService())
-                            .orElseThrow(() -> createServiceNotFoundException(serviceAnnotation.map(Service::filter).orElse(null), serviceType));
-                })
+    protected Object resolveParameter(@NotNull ParameterContext parameterContext, @NotNull ExtensionContext extensionContext, @NotNull Type resolvedParameterType) {
+        final ServiceHolder.Key key = computeServiceType(resolvedParameterType)
+                .flatMap(serviceType -> findServiceAnnotation(parameterContext, extensionContext, serviceType)
+                        .map(ann -> toKey(serviceType, ann)))
                 .orElseThrow(() -> new ParameterResolutionException("Cannot handle type " + resolvedParameterType));
+
+        final ServiceHolder serviceHolder = extensionContext.getStore(NAMESPACE).getOrComputeIfAbsent(key, serviceHolderFactory(extensionContext), ServiceHolder.class);
+        return isMultiple(resolvedParameterType) ? serviceHolder.getServices() : serviceHolder.getService();
     }
 
     private static ServiceHolder.Key toKey(Class<?> serviceType, Service serviceAnnotation) {
@@ -81,11 +75,10 @@ class ServiceParameterResolver extends AbstractTypeBasedParameterResolver {
     }
 
     @NotNull
-    private static Optional<Class<?>> computeServiceType(Type resolvedParameterType) {
+    private static Optional<Class<?>> computeServiceType(@NotNull Type resolvedParameterType) {
         if (resolvedParameterType instanceof ParameterizedType) {
             final ParameterizedType parameterizedType = (ParameterizedType) resolvedParameterType;
-            final Class<?> clazz = getRawClass(parameterizedType);
-            if (Collection.class == clazz || List.class.isAssignableFrom(clazz)) {
+            if (isMultiple(parameterizedType)) {
                 final Type[] actualTypeArguments = parameterizedType.getActualTypeArguments();
                 if (actualTypeArguments.length == 1 && actualTypeArguments[0] instanceof Class<?>) {
                     return Optional.of((Class<?>) actualTypeArguments[0]);
@@ -106,63 +99,55 @@ class ServiceParameterResolver extends AbstractTypeBasedParameterResolver {
         return (Class<?>) rawType;
     }
 
-    private ParameterResolutionException createServiceNotFoundException(String ldapFilter, Type resolvedParameterType) {
-        return Optional.ofNullable(ldapFilter)
-                .map(String::trim)
-                .filter(filter -> !filter.isEmpty())
-                .map(filter -> new ParameterResolutionException("No service of type " + resolvedParameterType + " with filter \"" + filter + "\" available"))
-                .orElseGet(() -> new ParameterResolutionException("No service of type " + resolvedParameterType + " available"));
-    }
-
     @NotNull
-    private static Function<ServiceHolder.Key, ServiceHolder> serviceHolderFactory(ExtensionContext extensionContext, Class<?> requiredServiceType) {
+    private static Function<ServiceHolder.Key, ServiceHolder> serviceHolderFactory(ExtensionContext extensionContext) {
         return key -> new ServiceHolder(getBundleContext(extensionContext), key);
     }
 
-    @Nullable
-    private static BundleContext getBundleContext(ExtensionContext extensionContext) {
+    @NotNull
+    private static BundleContext getBundleContext(@NotNull ExtensionContext extensionContext) {
         return Optional.ofNullable(FrameworkUtil.getBundle(extensionContext.getRequiredTestClass()))
                 .map(Bundle::getBundleContext)
-                .orElse(null);
+                .orElseThrow(() -> new ParameterResolutionException("@OSGi and @Service annotations can only be used with tests running in an OSGi environment"));
     }
 
     @NotNull
-    private static Optional<Service> findServiceAnnotation(ParameterContext parameterContext, ExtensionContext extensionContext, Class<?> requiredServiceType) {
-        return Stream.<Supplier<Optional<Service>>>of(
-                () -> findServiceAnnotationOnParameter(parameterContext, requiredServiceType),
-                () -> findServiceAnnotationOnMethodOrClass(extensionContext, requiredServiceType))
-                .map(Supplier::get)
-                .filter(Optional::isPresent)
-                .map(Optional::get)
+    private static Optional<Service> findServiceAnnotation(@NotNull ParameterContext parameterContext, @NotNull ExtensionContext extensionContext, @NotNull Class<?> requiredServiceType) {
+        return Stream.concat(
+                Stream.of(findMatchingServiceAnnotationOnParameter(parameterContext, requiredServiceType)),
+                Stream.of(parameterContext.getDeclaringExecutable(), extensionContext.getRequiredTestClass())
+                        .map(annotatedElement -> findMatchingServiceAnnotation(annotatedElement, requiredServiceType)))
+                .filter(Objects::nonNull)
                 .findFirst();
     }
 
-    private static Optional<Service> findServiceAnnotationOnMethodOrClass(ExtensionContext extensionContext, Class<?> requiredServiceType) {
-        return extensionContext.getElement()
-                .map(ae -> findMatchingServiceAnnotation(ae, requiredServiceType))
-                .filter(Optional::isPresent)
-                .orElseGet(() -> extensionContext.getParent().flatMap(p -> findServiceAnnotationOnMethodOrClass(p, requiredServiceType)));
+    private static Service findMatchingServiceAnnotationOnParameter(@NotNull ParameterContext parameterContext, @NotNull Class<?> requiredServiceType) {
+        final List<Service> serviceAnnotations = parameterContext.findRepeatableAnnotations(Service.class);
+        switch (serviceAnnotations.size()) {
+            case 0:
+                return null;
+            case 1:
+                final Service serviceAnnotation = serviceAnnotations.get(0);
+                if (!serviceAnnotation.value().isAssignableFrom(requiredServiceType)) {
+                    throw new ParameterResolutionException("Mismatched types in annotation and parameter. " +
+                            "Annotation type is \"" + serviceAnnotation.value().getSimpleName() + "\", parameter type is \"" + requiredServiceType.getSimpleName() + "\"");
+                }
+                return serviceAnnotation;
+            default:
+                throw new ParameterResolutionException("Parameters must not be annotated with multiple @Service annotations: " + parameterContext.getDeclaringExecutable());
+        }
     }
 
-    private static Optional<Service> findServiceAnnotationOnParameter(ParameterContext parameterContext, Class<?> requiredServiceType) {
-        final Optional<Service> serviceAnnotation = findAnnotation(parameterContext.getParameter(), Service.class);
-        serviceAnnotation.ifPresent(ann -> {
-            if (!ann.value().isAssignableFrom(requiredServiceType)) {
-                throw new ParameterResolutionException("Mismatched types in annotation and parameter. " +
-                        "Annotation type is \"" + ann.value().getSimpleName() + "\", parameter type is \"" + requiredServiceType.getSimpleName() + "\"");
-            }
-        });
-        return serviceAnnotation;
-    }
-
-    private static Optional<Service> findMatchingServiceAnnotation(AnnotatedElement annotatedElement, Class<?> requiredServiceType) {
+    @Nullable
+    private static Service findMatchingServiceAnnotation(@Nullable AnnotatedElement annotatedElement, @NotNull Class<?> requiredServiceType) {
         return AnnotationSupport.findRepeatableAnnotations(annotatedElement, Service.class)
                 .stream()
                 .filter(serviceAnnotation -> Objects.equals(serviceAnnotation.value(), requiredServiceType))
-                .findFirst();
+                .findFirst()
+                .orElse(null);
     }
 
-    private boolean isMultiple(Type resolvedParameterType) {
+    private static boolean isMultiple(@NotNull Type resolvedParameterType) {
         if (resolvedParameterType instanceof ParameterizedType) {
             final Class<?> type = getRawClass((ParameterizedType) resolvedParameterType);
             return Collection.class == type || List.class.isAssignableFrom(type);
@@ -172,9 +157,12 @@ class ServiceParameterResolver extends AbstractTypeBasedParameterResolver {
 
     private static class ServiceHolder implements ExtensionContext.Store.CloseableResource {
 
+        private final Key key;
+
         private final ServiceTracker<?, ?> serviceTracker;
 
-        private ServiceHolder(BundleContext bundleContext, Key key) {
+        private ServiceHolder(@NotNull BundleContext bundleContext, @NotNull Key key) {
+            this.key = key;
             final Filter filter = createFilter(bundleContext, key.type(), key.filter());
             serviceTracker = new SortingServiceTracker<>(bundleContext, filter);
             serviceTracker.open();
@@ -185,19 +173,52 @@ class ServiceParameterResolver extends AbstractTypeBasedParameterResolver {
             serviceTracker.close();
         }
 
-        public Object getService() {
-            return serviceTracker.getService();
+        @Nullable
+        public Object getService() throws ParameterResolutionException{
+            final Object service = serviceTracker.getService();
+            return checkCardinality(service, false);
         }
 
-        public List<Object> getServices() {
-            final Object[] services = serviceTracker.getServices();
-            return services == null ? Collections.emptyList() : Arrays.asList(services);
+        @NotNull
+        public List<Object> getServices() throws ParameterResolutionException {
+            @Nullable final Object[] services = serviceTracker.getServices();;
+            return Optional.ofNullable(checkCardinality(services, true))
+                    .map(Arrays::asList)
+                    .orElseGet(Collections::emptyList);
         }
 
-        private static Filter createFilter(BundleContext bundleContext, Class<?> clazz, String ldapFilter) {
+        @Nullable
+        private <T> T checkCardinality(@Nullable T service, boolean isMultiple) throws ParameterResolutionException {
+            final ServiceCardinality effectiveCardinality = calculateEffectiveCardinality(isMultiple);
+            if (service == null && effectiveCardinality == ServiceCardinality.MANDATORY) {
+                throw createServiceNotFoundException(key.filter(), key.type());
+            }
+            return service;
+        }
+
+        @NotNull
+        private ServiceCardinality calculateEffectiveCardinality(boolean isMultiple) {
+            final ServiceCardinality cardinality = key.cardinality();
+            if (cardinality == ServiceCardinality.AUTO) {
+                return isMultiple ? ServiceCardinality.OPTIONAL : ServiceCardinality.MANDATORY;
+            }
+            return cardinality;
+        }
+
+        @NotNull
+        private static ParameterResolutionException createServiceNotFoundException(@NotNull String ldapFilter, @NotNull Type resolvedParameterType) {
+            return Optional.of(ldapFilter)
+                    .map(String::trim)
+                    .filter(filter -> !filter.isEmpty())
+                    .map(filter -> new ParameterResolutionException("No service of type \"" + resolvedParameterType.getTypeName() + "\" with filter \"" + filter + "\" available"))
+                    .orElseGet(() -> new ParameterResolutionException("No service of type \"" + resolvedParameterType.getTypeName() + "\" available"));
+        }
+
+        @NotNull
+        private static Filter createFilter(@NotNull BundleContext bundleContext, @NotNull Class<?> clazz, @NotNull String ldapFilter) {
             final String classFilter = String.format("(%s=%s)", Constants.OBJECTCLASS, clazz.getName());
             final String combinedFilter;
-            if (ldapFilter == null || ldapFilter.trim().isEmpty()) {
+            if (ldapFilter.trim().isEmpty()) {
                 combinedFilter = classFilter;
             } else {
                 combinedFilter = String.format("(&%s%s)", classFilter, ldapFilter);
@@ -205,16 +226,17 @@ class ServiceParameterResolver extends AbstractTypeBasedParameterResolver {
             try {
                 return bundleContext.createFilter(combinedFilter);
             } catch (InvalidSyntaxException e) {
-                throw new IllegalArgumentException("Invalid filter expression: \"" + ldapFilter + "\"", e);
+                throw new ParameterResolutionException("Invalid filter expression used in @Service annotation :\"" + ldapFilter + "\"", e);
             }
         }
 
         private static class SortingServiceTracker<T> extends ServiceTracker<T, T> {
-            public SortingServiceTracker(BundleContext bundleContext, Filter filter) {
+            public SortingServiceTracker(@NotNull BundleContext bundleContext, @NotNull Filter filter) {
                 super(bundleContext, filter, null);
             }
 
             @Override
+            @Nullable
             public ServiceReference<T>[] getServiceReferences() {
                 return Optional.ofNullable(super.getServiceReferences())
                         .map(serviceReferences -> {
@@ -231,9 +253,24 @@ class ServiceParameterResolver extends AbstractTypeBasedParameterResolver {
 
             private final Service serviceAnnotation;
 
-            public Key(Class<?> serviceType, Service serviceAnnotation) {
+            public Key(@NotNull Class<?> serviceType, @NotNull Service serviceAnnotation) {
                 this.serviceType = serviceType;
                 this.serviceAnnotation = serviceAnnotation;
+            }
+
+            @NotNull
+            public Class<?> type() {
+                return serviceType;
+            }
+
+            @NotNull
+            public String filter() {
+                return serviceAnnotation.filter();
+            }
+
+            @NotNull
+            public ServiceCardinality cardinality() {
+                return serviceAnnotation.cardinality();
             }
 
             @Override
@@ -250,14 +287,6 @@ class ServiceParameterResolver extends AbstractTypeBasedParameterResolver {
             @Override
             public int hashCode() {
                 return Objects.hash(serviceType, serviceAnnotation);
-            }
-
-            public Class<?> type() {
-                return serviceType;
-            }
-
-            public String filter() {
-                return serviceAnnotation.filter();
             }
         }
     }

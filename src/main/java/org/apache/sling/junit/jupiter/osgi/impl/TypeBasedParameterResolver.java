@@ -18,6 +18,7 @@
  */
 package org.apache.sling.junit.jupiter.osgi.impl;
 
+import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.api.extension.ParameterContext;
 
@@ -44,10 +45,10 @@ public abstract class TypeBasedParameterResolver<T> extends AbstractTypeBasedPar
     }
 
     @Override
-    protected boolean supportsParameter(ParameterContext parameterContext, ExtensionContext extensionContext, Type resolvedParameterType) {
+    protected boolean supportsParameter(@NotNull ParameterContext parameterContext, @NotNull ExtensionContext extensionContext, @NotNull Type resolvedParameterType) {
         return supportedType == resolvedParameterType;
     }
 
     @Override
-    protected abstract T resolveParameter(ParameterContext parameterContext, ExtensionContext extensionContext, Type resolvedParameterType);
+    protected abstract T resolveParameter(@NotNull ParameterContext parameterContext, @NotNull ExtensionContext extensionContext, @NotNull Type resolvedParameterType);
 }

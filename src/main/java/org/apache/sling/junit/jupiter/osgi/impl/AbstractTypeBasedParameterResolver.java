@@ -37,9 +37,9 @@ import static org.apache.sling.junit.jupiter.osgi.impl.ReflectionHelper.determin
  */
 public abstract class AbstractTypeBasedParameterResolver implements ParameterResolver {
 
-    protected abstract boolean supportsParameter(ParameterContext parameterContext, ExtensionContext extensionContext, Type resolvedParameterType);
+    protected abstract boolean supportsParameter(@NotNull ParameterContext parameterContext, @NotNull ExtensionContext extensionContext, @NotNull Type resolvedParameterType);
 
-    protected abstract Object resolveParameter(ParameterContext parameterContext, ExtensionContext extensionContext, Type resolvedParameterType);
+    protected abstract Object resolveParameter(@NotNull ParameterContext parameterContext, @NotNull ExtensionContext extensionContext, @NotNull Type resolvedParameterType);
 
     @Override
     public final boolean supportsParameter(ParameterContext parameterContext, ExtensionContext extensionContext) {

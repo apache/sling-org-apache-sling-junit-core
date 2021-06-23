@@ -18,6 +18,8 @@
  */
 package org.apache.sling.junit.jupiter.osgi;
 
+import org.osgi.annotation.versioning.ConsumerType;
+import org.osgi.annotation.versioning.ProviderType;
 import org.osgi.framework.Filter;
 
 import java.lang.annotation.ElementType;
@@ -34,9 +36,13 @@ import java.lang.annotation.Target;
  * be used to specify a number of different services using the {@link #value() service
  * type} and an optional {@link #filter() LDAP filter expression}.
  * <br>
- * Supported parameter types ar the service type itself for mandatory and unary references (1..1),
- * a {@code Collection} or {@code List} of the service type for optional and multiple references (0..n).
- * Currently no other cardinalities are supported.
+ * Supported parameter types are the service type itself for unary references (1..1),
+ * a {@link java.util.Collection} or {@link java.util.List} of the service type for optional
+ * and multiple references (0..n).
+ * <br>
+ * Additionally it is possible to refine the cardinality by specifying the {@code cardinality}
+ * attribute in order to require or not the presence of at least one service instance, thus
+ * achieving cardinalities (0..1) and (1..n).
  * <br>
  * When used on a test class, the specified services are made available for injection as parameters
  * to all of the test's methods.
@@ -47,9 +53,11 @@ import java.lang.annotation.Target;
  * When used on a method parameter, the specified service is made available for injection for exactly
  * that parameter. In this case, the {@link #value() service type} need not be specified, it can
  * be inferred from the parameter's type. However, it may still be useful to specify a filter expression.
+ *
+ * @see ServiceCardinality
  */
 @Retention(RetentionPolicy.RUNTIME)
-@Target({ElementType.TYPE, ElementType.METHOD, ElementType.PARAMETER})
+@Target({ElementType.TYPE, ElementType.CONSTRUCTOR, ElementType.METHOD, ElementType.PARAMETER})
 @Repeatable(Services.class)
 @Inherited
 public @interface Service {
@@ -66,5 +74,12 @@ public @interface Service {
      * An optional filter expression conforming to the LDAP filter syntax used in OSGi {@link Filter}s.
      */
     String filter() default "";
+
+    /**
+     * Whether or not injection fails in the absence of a suitable service.
+     *
+     * @see ServiceCardinality
+     */
+    ServiceCardinality cardinality() default ServiceCardinality.AUTO;
 }
 
