@@ -16,69 +16,88 @@
  */
 package org.apache.sling.junit;
 
-import java.util.Arrays;
-import java.util.Collection;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
-import static org.junit.Assert.assertEquals;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameters;
+import java.util.function.Function;
+import java.util.stream.Stream;
 
-@RunWith(value=Parameterized.class)
+import static org.apache.commons.lang3.StringUtils.EMPTY;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.params.provider.Arguments.arguments;
+
 public class RequestParserTest {
-    final String pathInfo;
-    final String expectedTestSelector;
-    final String expectedExtension;
-    final String expectedMethodSelector;
-    final RequestParser parser;
-    
-    public RequestParserTest(String pathInfo, String expectedTestSelector, String expectedExtension, String expectedMethodSelector) {
-        this.pathInfo = pathInfo;
-        this.expectedTestSelector = expectedTestSelector;
-        this.expectedExtension = expectedExtension;
-        this.expectedMethodSelector = expectedMethodSelector;
-        parser = new RequestParser(pathInfo);
+
+    @ParameterizedTest
+    @MethodSource("configs")
+    void testSelector(String pathInfo, String expectedTestSelector, String expectedExtension, String expectedMethodSelector) {
+        assertEquals(expectedTestSelector, new RequestParser(pathInfo).getTestSelectorString());
     }
 
-    @Override
-    public String toString() {
-        return getClass().getSimpleName() + ", pathInfo=" + pathInfo;
+    @ParameterizedTest
+    @MethodSource("configs")
+    void testExtension(String pathInfo, String expectedTestSelector, String expectedExtension, String expectedMethodSelector) {
+        assertEquals(expectedExtension, new RequestParser(pathInfo).getExtension());
     }
-    
-    @Test
-    public void testSelector() {
-        assertEquals(toString(), expectedTestSelector, parser.getTestSelectorString());
+
+    @ParameterizedTest
+    @MethodSource("configs")
+    void testMethodName(String pathInfo, String expectedTestSelector, String expectedExtension, String expectedMethodSelector) {
+        assertEquals(expectedMethodSelector, new RequestParser(pathInfo).getMethodName());
     }
-    
-    @Test
-    public void testExtension() {
-        assertEquals(toString(), expectedExtension, parser.getExtension());
+
+    @ParameterizedTest
+    @MethodSource("acceptTestNameArguments")
+    void testAccepTestName(String pathInfo, String testName, boolean isValid) {
+        final RequestParser parser = new RequestParser(pathInfo);
+        assertEquals(isValid, parser.acceptTestName(testName), String.format("accept test named \"%s\"", testName));
     }
-    
-    @Test
-    public void testMethodName() {
-        assertEquals(toString(), expectedMethodSelector, parser.getMethodName());
+    @SuppressWarnings("unused") // test arguments
+    static Stream<Arguments> acceptTestNameArguments() {
+        return concatStreams(
+                toArguments("/org.example.FooTest/testBar.html",
+                    array("org.example.FooTest"),
+                    array("org.example.FooTest$1")),
+                toArguments("/org.example.FooTest.html",
+                    array("org.example.FooTest"),
+                    array("org.example.FooTest$1", "org.example.bar.BarTest")),
+                toArguments("/org.example.html",
+                    array("org.example.FooTest", "org.example.FooTest$1", "org.example.bar.BarTest"),
+                    array("org.acme.FooTest", "org.examplebar.BarTest")));
     }
-    
-    @Parameters
-    public static Collection<Object[]> configs() {
-        final String EMPTY= "";
-        final Object[][] data = new Object[][] {
-                { EMPTY, EMPTY, EMPTY, EMPTY },
-                { "/", EMPTY, EMPTY, EMPTY },
-                { "/.html", EMPTY, "html", EMPTY },
-                { "/someTests.here.html", "someTests.here", "html", EMPTY },
-                { "someTests.here.html", "someTests.here", "html", EMPTY },
-                { "someTests.here.html.json", "someTests.here.html", "json", EMPTY },
-                { "someTests.here.html.json/TEST_METHOD_NAME.txt", "someTests.here.html.json", "txt", "TEST_METHOD_NAME" },
-                { ".json/TEST_METHOD_NAME", "", "json/TEST_METHOD_NAME", "" },
-                { ".json/TEST_METHOD_NAME.txt", ".json", "txt", "TEST_METHOD_NAME" },
-                { "/.json/TEST_METHOD_NAME.txt", ".json", "txt", "TEST_METHOD_NAME" },
-                { "/.json/TEST_METHOD_NAME.txt", ".json", "txt", "TEST_METHOD_NAME" },
-                { "/.html.json/TEST_METHOD_NAME.txt", ".html.json", "txt", "TEST_METHOD_NAME" },
-        };
-        
-        return Arrays.asList(data);
+
+    @SafeVarargs
+    private static <T> Stream<T> concatStreams(Stream<T>... streams) {
+        return Stream.of(streams).flatMap(Function.identity());
+    }
+
+    private static Stream<Arguments> toArguments(String pathInfo, String[] valid, String[] invalid) {
+        return Stream.concat(
+            Stream.of(valid).map(name -> arguments(pathInfo, name, true)),
+            Stream.of(invalid).map(name -> arguments(pathInfo, name, false)));
+    }
+
+    @SafeVarargs
+    static <T>  T[] array(T... elements) {
+        return elements;
+    }
+
+
+    @SuppressWarnings("unused") // test arguments
+    static Stream<Arguments> configs() {
+        return Stream.of(
+            arguments(EMPTY, EMPTY, EMPTY, EMPTY),
+            arguments("/.html", EMPTY, "html", EMPTY),
+            arguments("/someTests.here.html", "someTests.here", "html", EMPTY),
+            arguments("someTests.here.html", "someTests.here", "html", EMPTY),
+            arguments("someTests.here.html.json", "someTests.here.html", "json", EMPTY),
+            arguments("someTests.here.html.json/TEST_METHOD_NAME.txt", "someTests.here.html.json", "txt", "TEST_METHOD_NAME"),
+            arguments(".json/TEST_METHOD_NAME", "", "json/TEST_METHOD_NAME", ""),
+            arguments(".json/TEST_METHOD_NAME.txt", ".json", "txt", "TEST_METHOD_NAME"),
+            arguments("/.json/TEST_METHOD_NAME.txt", ".json", "txt", "TEST_METHOD_NAME"),
+            arguments("/.json/TEST_METHOD_NAME.txt", ".json", "txt", "TEST_METHOD_NAME"),
+            arguments("/.html.json/TEST_METHOD_NAME.txt", ".html.json", "txt", "TEST_METHOD_NAME")
+        );
      }
 }

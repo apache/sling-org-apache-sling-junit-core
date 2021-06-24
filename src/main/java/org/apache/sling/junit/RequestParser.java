@@ -104,7 +104,8 @@ public class RequestParser implements TestSelector {
         if(testNameSelector.length() == 0) {
             return true;
         } else {
-            return testName.startsWith(testNameSelector);
+            return testName.equals(testNameSelector)                // match test class directly
+                    || testName.startsWith(testNameSelector + '.'); // match tests within named package or below
         }
     }
 
