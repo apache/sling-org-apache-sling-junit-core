@@ -111,10 +111,11 @@ public class BundleTestsProvider extends AbstractTestsProvider {
 
             Predicate<String> isTestClass;
             try {
-                isTestClass = Pattern.compile(headerValue).asPredicate();
+                final Pattern testClassRegexp = Pattern.compile(headerValue);
+                isTestClass = name -> testClassRegexp.matcher(name).matches();
             } catch (PatternSyntaxException pse) {
-                LOG.warn("Bundle '{}' has an invalid pattern for {} header, ignored: '{}'",
-                        bundle.getSymbolicName(), SLING_TEST_REGEXP, headerValue);
+                LOG.warn("Bundle '{}' has an invalid pattern for {} header, ignored: '{}', message: '{}'",
+                        bundle.getSymbolicName(), SLING_TEST_REGEXP, headerValue, pse.getMessage());
                 return Collections.emptySet();
             }
 
