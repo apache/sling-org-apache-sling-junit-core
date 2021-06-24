@@ -20,7 +20,7 @@ package org.apache.sling.junit.jupiter.osgi;
 
 /**
  * The cardinality of a service being injected is controlled via the type of the injected
- * parameter and additionally via the {@link @Service} annotation's {@code cardinality}
+ * parameter and additionally via the {@link Service @Service} annotation's {@code cardinality}
  * attribute.
  * <br>
  * The cardinality can be either {@code OPTIONAL} or {@code MANDATORY}. {@code OPTIONAL}

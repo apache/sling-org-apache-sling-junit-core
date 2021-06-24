@@ -33,7 +33,7 @@ import static org.apache.sling.junit.jupiter.osgi.impl.ReflectionHelper.paramete
  * {@link #resolveParameter(ParameterContext, ExtensionContext, Type)}, the supported parameter type is
  * inferred from the classes type-argument {@code T}.
  *
- * @param <T>
+ * @param <T> the type to be provided by the parameter resolver
  */
 public abstract class TypeBasedParameterResolver<T> extends AbstractTypeBasedParameterResolver {
 

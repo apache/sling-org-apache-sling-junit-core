@@ -67,16 +67,22 @@ public @interface Service {
      * <br>
      * May be omitted if the annotation is used to annotate a method parameter, as the service type can
      * be inferred from the parameter's type.
+     *
+     * @return the service interface or class
      */
     Class<?> value() default Object.class;
 
     /**
      * An optional filter expression conforming to the LDAP filter syntax used in OSGi {@link Filter}s.
+     *
+     * @return the filter expression or an empty string if none is specified
      */
     String filter() default "";
 
     /**
      * Whether or not injection fails in the absence of a suitable service.
+     *
+     * @return the desired cardinality for the injected service
      *
      * @see ServiceCardinality
      */
