@@ -28,7 +28,7 @@
     </parent>
 
     <artifactId>org.apache.sling.junit.core</artifactId>
-    <version>1.1.5-SNAPSHOT</version>
+    <version>1.1.6</version>
 
     <name>Apache Sling JUnit Core</name>
     <description>Runs JUnit tests in an OSGi framework and provides the JUnit libraries</description>
@@ -46,7 +46,7 @@
         <connection>scm:git:https://gitbox.apache.org/repos/asf/sling-org-apache-sling-junit-core.git</connection>
         <developerConnection>scm:git:https://gitbox.apache.org/repos/asf/sling-org-apache-sling-junit-core.git</developerConnection>
         <url>https://gitbox.apache.org/repos/asf?p=sling-org-apache-sling-junit-core.git</url>
-        <tag>HEAD</tag>
+        <tag>org.apache.sling.junit.core-1.1.6</tag>
     </scm>
 
     <build>
