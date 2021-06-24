@@ -16,15 +16,7 @@
  */
 package org.apache.sling.junit.impl.servlet;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.util.Collection;
-
-import javax.servlet.ServletException;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-
+import org.apache.commons.lang3.StringUtils;
 import org.apache.sling.junit.Renderer;
 import org.apache.sling.junit.RendererSelector;
 import org.apache.sling.junit.RequestParser;
@@ -32,6 +24,16 @@ import org.apache.sling.junit.TestSelector;
 import org.apache.sling.junit.TestsManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import javax.servlet.ServletException;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.util.Collection;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class ServletProcessor {
 
@@ -160,15 +162,9 @@ public class ServletProcessor {
 
     /** Return path to which to POST to execute specified test */
     protected String getTestExecutionPath(HttpServletRequest request, TestSelector selector, String extension) {
-    	String selectedTestMethodName = selector.getSelectedTestMethodName();
-    	String methodStr = "";
-    	if (selectedTestMethodName != null && !"".equals(selectedTestMethodName)) {
-    		methodStr = "/" + selectedTestMethodName;
-    	}
-        return  "./"
-        + selector.getTestSelectorString()
-        + methodStr
-        + "."
-        + extension;
+        final String path = Stream.of(request.getContextPath(), request.getServletPath(), selector.getTestSelectorString(), selector.getSelectedTestMethodName())
+                .filter(StringUtils::isNotBlank)
+                .collect(Collectors.joining("/"));
+        return path + "." + extension;
     }
 }
