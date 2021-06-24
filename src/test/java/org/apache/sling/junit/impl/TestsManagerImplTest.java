@@ -16,14 +16,6 @@
  */
 package org.apache.sling.junit.impl;
 
-import net.bytebuddy.ByteBuddy;
-import net.bytebuddy.description.type.TypeDescription;
-import net.bytebuddy.dynamic.scaffold.InstrumentedType;
-import net.bytebuddy.implementation.DefaultMethodCall;
-import net.bytebuddy.implementation.Implementation;
-import net.bytebuddy.implementation.MethodCall;
-import net.bytebuddy.implementation.bytecode.ByteCodeAppender;
-import net.bytebuddy.matcher.ElementMatchers;
 import org.apache.sling.junit.Renderer;
 import org.apache.sling.junit.RequestParser;
 import org.apache.sling.junit.TestsManager;
