@@ -21,9 +21,9 @@ import java.io.UnsupportedEncodingException;
 import java.util.Collection;
 import java.util.Map;
 
-import javax.json.Json;
-import javax.json.JsonException;
-import javax.json.stream.JsonGenerator;
+import jakarta.json.Json;
+import jakarta.json.JsonException;
+import jakarta.json.stream.JsonGenerator;
 import javax.servlet.http.HttpServletResponse;
 
 import org.apache.sling.junit.Renderer;
