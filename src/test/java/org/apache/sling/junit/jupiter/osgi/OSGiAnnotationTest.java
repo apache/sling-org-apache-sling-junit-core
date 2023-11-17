@@ -441,7 +441,7 @@ class OSGiAnnotationTest {
             super(object);
         }
 
-        @Override
+        @Test @Override
         void injectedMethodParameter(@Service List<ServiceInterface> objectFromMethodInjection) {
             super.injectedMethodParameter(objectFromMethodInjection);
         }
