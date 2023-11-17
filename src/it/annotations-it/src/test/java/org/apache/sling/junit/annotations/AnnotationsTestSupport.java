@@ -82,7 +82,8 @@ public class AnnotationsTestSupport extends TestSupport {
             mavenBundle().groupId("ch.qos.logback").artifactId("logback-classic").versionAsInProject(),
             mavenBundle().groupId("ch.qos.logback").artifactId("logback-core").versionAsInProject(),
             mavenBundle().groupId("org.ops4j.pax.logging").artifactId("pax-logging-api").versionAsInProject(),
-            mavenBundle().groupId("org.ops4j.pax.logging").artifactId("pax-logging-logback").versionAsInProject()
+            mavenBundle().groupId("org.ops4j.pax.logging").artifactId("pax-logging-logback").versionAsInProject(),
+            mavenBundle().groupId("jakarta.json").artifactId("jakarta.json-api").version("2.1.1")
         );
     }
 
