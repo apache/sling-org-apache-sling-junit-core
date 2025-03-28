@@ -282,8 +282,8 @@ public class XmlRenderer extends RunListener implements Renderer, RendererFactor
 		try {
 			DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
 			factory.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, true);
-            factory.setAttribute(XMLConstants.ACCESS_EXTERNAL_DTD, "");
-            factory.setAttribute(XMLConstants.ACCESS_EXTERNAL_SCHEMA, "");
+			factory.setAttribute(XMLConstants.ACCESS_EXTERNAL_DTD, "");
+			factory.setAttribute(XMLConstants.ACCESS_EXTERNAL_SCHEMA, "");
             factory.setExpandEntityReferences(false);
 			return factory.newDocumentBuilder();
 		} catch (Exception exc) {
@@ -300,6 +300,8 @@ public class XmlRenderer extends RunListener implements Renderer, RendererFactor
 		try {
 			TransformerFactory tf = TransformerFactory.newInstance();
 			tf.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, true);
+			tf.setAttribute(XMLConstants.ACCESS_EXTERNAL_DTD, "");
+			tf.setAttribute(XMLConstants.ACCESS_EXTERNAL_STYLESHEET, "");
 			Transformer trans = tf.newTransformer();
 			StringWriter sw = new StringWriter();
 			trans.transform(new DOMSource(element), new StreamResult(sw));
