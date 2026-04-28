@@ -163,8 +163,8 @@ public class JacocoServlet extends HttpServlet {
             final String sessionId = req.getParameter(PARAM_SESSION_ID);
             log.info("Getting JaCoCo execution data, resetAgent={}", resetAgent);
             byte[] data = agent.getExecutionData(resetAgent);
-            if (sessionId != null) {
-                log.info("Setting JaCoCo sessionId={}", sessionId);
+            if(sessionId != null) {
+                log.info("Setting JaCoCo sessionId={}", sanitizeForLog(sessionId));
                 agent.setSessionId(sessionId);
             }
             resp.getOutputStream().write(data);
@@ -172,6 +172,10 @@ public class JacocoServlet extends HttpServlet {
         }
     }
 
+    static String sanitizeForLog(String value) {
+        return value == null ? null : value.replace("\r", "\\r").replace("\n", "\\n");
+    }
+    
     private String getUsageInfo() {
         return new StringBuilder()
                 .append("This is ")
