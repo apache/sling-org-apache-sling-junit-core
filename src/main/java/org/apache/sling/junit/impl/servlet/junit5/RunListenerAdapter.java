@@ -18,6 +18,8 @@
  */
 package org.apache.sling.junit.impl.servlet.junit5;
 
+import java.util.function.Consumer;
+
 import org.junit.platform.engine.TestExecutionResult;
 import org.junit.platform.engine.reporting.ReportEntry;
 import org.junit.platform.launcher.TestExecutionListener;
@@ -29,14 +31,12 @@ import org.junit.runner.Description;
 import org.junit.runner.Result;
 import org.junit.runner.notification.RunListener;
 
-import java.util.function.Consumer;
-
 import static org.apache.sling.junit.impl.servlet.junit5.DescriptionGenerator.toDescription;
 
 public class RunListenerAdapter implements TestExecutionListener {
 
     private final RunListener runListener;
-    
+
     private final SummaryGeneratingListener summarizer;
 
     public RunListenerAdapter(RunListener runListener) {
@@ -94,10 +94,14 @@ public class RunListenerAdapter implements TestExecutionListener {
             try {
                 switch (testExecutionResult.getStatus()) {
                     case FAILED:
-                        runListener.testFailure(FailureHelper.convert(testIdentifier, testExecutionResult.getThrowable().orElse(null)));
+                        runListener.testFailure(FailureHelper.convert(
+                                testIdentifier,
+                                testExecutionResult.getThrowable().orElse(null)));
                         break;
                     case ABORTED:
-                        runListener.testAssumptionFailure(FailureHelper.convert(testIdentifier, testExecutionResult.getThrowable().orElse(null)));
+                        runListener.testAssumptionFailure(FailureHelper.convert(
+                                testIdentifier,
+                                testExecutionResult.getThrowable().orElse(null)));
                         break;
                     case SUCCESSFUL:
                         break;
@@ -108,7 +112,6 @@ public class RunListenerAdapter implements TestExecutionListener {
             withDescription(testIdentifier, runListener::testFinished);
         } else {
             withDescription(testIdentifier, runListener::testSuiteFinished);
-
         }
     }
 
@@ -122,7 +125,8 @@ public class RunListenerAdapter implements TestExecutionListener {
         summarizer.reportingEntryPublished(testIdentifier, entry);
     }
 
-    private static void withDescription(TestIdentifier testIdentifier, ExceptionHandlingConsumer<Description, Exception> action) {
+    private static void withDescription(
+            TestIdentifier testIdentifier, ExceptionHandlingConsumer<Description, Exception> action) {
         toDescription(testIdentifier).ifPresent(action);
     }
 

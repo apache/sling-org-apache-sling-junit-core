@@ -18,6 +18,10 @@
  */
 package org.apache.sling.junit.impl.servlet.junit5;
 
+import java.util.LinkedHashSet;
+import java.util.Objects;
+import java.util.Optional;
+
 import org.apache.sling.junit.sampletests.JUnit4SlingJUnit;
 import org.junit.Test;
 import org.junit.platform.engine.TestDescriptor;
@@ -29,10 +33,6 @@ import org.junit.platform.launcher.TestIdentifier;
 import org.junit.platform.launcher.TestPlan;
 import org.junit.runner.notification.Failure;
 import org.junit.runner.notification.RunListener;
-
-import java.util.LinkedHashSet;
-import java.util.Objects;
-import java.util.Optional;
 
 import static java.util.Arrays.asList;
 import static org.mockito.ArgumentMatchers.any;
@@ -63,42 +63,46 @@ public class RunListenerAdapterTest {
 
         // start test method (success)
         runListenerAdapter.executionStarted(getTestIdentifierForMethod("testSuccessful"));
-        verify(runListener, times(1)).testStarted(
-                argThat(desc -> desc.isTest() && Objects.equals(desc.getMethodName(), "testSuccessful")));
-        runListenerAdapter.executionFinished(getTestIdentifierForMethod("testSuccessful"), getTestExecutionResult(TestExecutionResult.Status.SUCCESSFUL));
-        verify(runListener, times(1)).testFinished(
-                argThat(desc -> desc.isTest() && Objects.equals(desc.getMethodName(), "testSuccessful")));
+        verify(runListener, times(1))
+                .testStarted(argThat(desc -> desc.isTest() && Objects.equals(desc.getMethodName(), "testSuccessful")));
+        runListenerAdapter.executionFinished(
+                getTestIdentifierForMethod("testSuccessful"),
+                getTestExecutionResult(TestExecutionResult.Status.SUCCESSFUL));
+        verify(runListener, times(1))
+                .testFinished(argThat(desc -> desc.isTest() && Objects.equals(desc.getMethodName(), "testSuccessful")));
 
         // finish test method (success)
-        
+
         // start test method (failure)
         runListenerAdapter.executionStarted(getTestIdentifierForMethod("testFailed"));
-        verify(runListener, times(1)).testStarted(
-                argThat(desc -> desc.isTest() && Objects.equals(desc.getMethodName(), "testFailed")));
-        runListenerAdapter.executionFinished(getTestIdentifierForMethod("testFailed"), getTestExecutionResult(TestExecutionResult.Status.FAILED));
+        verify(runListener, times(1))
+                .testStarted(argThat(desc -> desc.isTest() && Objects.equals(desc.getMethodName(), "testFailed")));
+        runListenerAdapter.executionFinished(
+                getTestIdentifierForMethod("testFailed"), getTestExecutionResult(TestExecutionResult.Status.FAILED));
         verify(runListener, times(1)).testFailure(any(Failure.class));
-        verify(runListener, times(1)).testFinished(
-                argThat(desc -> desc.isTest() && Objects.equals(desc.getMethodName(), "testFailed")));
+        verify(runListener, times(1))
+                .testFinished(argThat(desc -> desc.isTest() && Objects.equals(desc.getMethodName(), "testFailed")));
 
         // start test method (skipped)
         runListenerAdapter.executionSkipped(getTestIdentifierForMethod("testSkipped"), null);
-        verify(runListener, times(1)).testIgnored(
-                argThat(desc -> desc.isTest() && Objects.equals(desc.getMethodName(), "testSkipped")));
+        verify(runListener, times(1))
+                .testIgnored(argThat(desc -> desc.isTest() && Objects.equals(desc.getMethodName(), "testSkipped")));
 
-        runListenerAdapter.executionFinished(getTestIdentifierForClass(), getTestExecutionResult(TestExecutionResult.Status.FAILED));
-        verify(runListener, times(1)).testSuiteFinished(
-                argThat(desc -> Objects.equals(desc.getClassName(), JUnit4SlingJUnit.class.getName())));
+        runListenerAdapter.executionFinished(
+                getTestIdentifierForClass(), getTestExecutionResult(TestExecutionResult.Status.FAILED));
+        verify(runListener, times(1))
+                .testSuiteFinished(
+                        argThat(desc -> Objects.equals(desc.getClassName(), JUnit4SlingJUnit.class.getName())));
 
         runListenerAdapter.testPlanExecutionFinished(testPlan);
-        verify(runListener, times(1)).testRunFinished(
-                argThat(r ->
-                        !r.wasSuccessful()
+        verify(runListener, times(1))
+                .testRunFinished(argThat(r -> !r.wasSuccessful()
                         && r.getRunCount() == 2
                         && r.getFailureCount() == 1
                         && r.getIgnoreCount() == 1
                         && r.getAssumptionFailureCount() == 0
                         && r.getRunTime() > 0));
-        
+
         verifyNoMoreInteractions(runListener);
     }
 
@@ -114,10 +118,11 @@ public class RunListenerAdapterTest {
         when(testDescriptor.getType()).thenReturn(TestDescriptor.Type.CONTAINER);
         when(testDescriptor.isTest()).thenReturn(false);
         when(testDescriptor.getSource()).thenReturn(Optional.of(ClassSource.from(JUnit4SlingJUnit.class)));
-        when(testDescriptor.getChildren()).thenAnswer(m -> new LinkedHashSet<>(asList(
-                getTestIdentifierForMethod("testSuccessful"),
-                getTestIdentifierForMethod("testFailed"),
-                getTestIdentifierForMethod("testSkipped"))));
+        when(testDescriptor.getChildren())
+                .thenAnswer(m -> new LinkedHashSet<>(asList(
+                        getTestIdentifierForMethod("testSuccessful"),
+                        getTestIdentifierForMethod("testFailed"),
+                        getTestIdentifierForMethod("testSkipped"))));
         return TestIdentifier.from(testDescriptor);
     }
 
@@ -126,9 +131,8 @@ public class RunListenerAdapterTest {
         when(testDescriptor.getUniqueId()).thenReturn(mock(UniqueId.class));
         when(testDescriptor.getType()).thenReturn(TestDescriptor.Type.TEST);
         when(testDescriptor.isTest()).thenReturn(true);
-        when(testDescriptor.getSource()).thenReturn(Optional.of(
-                MethodSource.from(JUnit4SlingJUnit.class.getName(), methodName)));
+        when(testDescriptor.getSource())
+                .thenReturn(Optional.of(MethodSource.from(JUnit4SlingJUnit.class.getName(), methodName)));
         return TestIdentifier.from(testDescriptor);
     }
-
 }

@@ -1,18 +1,20 @@
 /*
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements.  See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License.  You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.sling.junit.impl;
 
@@ -42,12 +44,12 @@ public class AnnotationsProcessor implements TestObjectProcessor {
     protected void activate(ComponentContext ctx) {
         bundleContext = ctx.getBundleContext();
         this.map = new IdentityHashMap<>();
-        if(bundleContext == null) {
+        if (bundleContext == null) {
             throw new IllegalArgumentException("Null BundleContext in activate()");
         }
         log.debug("{} activated, BundleContext={}", this, bundleContext);
     }
-    
+
     protected void deactivate(ComponentContext ctx) {
         bundleContext = null;
         log.debug("{} deactivated", this);
@@ -56,48 +58,46 @@ public class AnnotationsProcessor implements TestObjectProcessor {
         }
         map.clear();
     }
-    
+
     /** Process annotations on the test object */
     @Override
     public Object process(Object testObject) throws Exception {
         log.debug("processing {}", testObject);
         map.put(testObject, new ArrayList<>());
-        for(Field f : testObject.getClass().getDeclaredFields()) {
-            if(f.isAnnotationPresent(TestReference.class)) {
+        for (Field f : testObject.getClass().getDeclaredFields()) {
+            if (f.isAnnotationPresent(TestReference.class)) {
                 processTestReference(testObject, f);
             }
         }
         return testObject;
     }
-    
+
     public void cleanupTest(Object test) {
         List<ServiceGetter<?>> serviceGetters = this.map.remove(test);
-        for (int i=0; i<serviceGetters.size(); i++) {
+        for (int i = 0; i < serviceGetters.size(); i++) {
             serviceGetters.get(i).close();
         }
     }
 
     /** Process the TestReference annotation to inject services into fields */
     private void processTestReference(Object testObject, Field f) throws Exception {
-        if(bundleContext == null) {
+        if (bundleContext == null) {
             final String msg = "Null BundleContext in processTestReference(), not activated?";
             log.error(msg);
             throw new IllegalArgumentException(msg);
         }
         final Class<?> serviceType = f.getType();
         Annotation[] testReferences = f.getDeclaredAnnotations();
-        if(Objects.nonNull(testReferences) && testReferences.length != 0){
+        if (Objects.nonNull(testReferences) && testReferences.length != 0) {
             TestReference testReference = (TestReference) testReferences[0];
 
             final Object service = getService(serviceType, testReference.target(), testObject);
-            if(service != null) {
+            if (service != null) {
                 f.setAccessible(true);
                 f.set(testObject, service);
-                log.debug("Injected service {} into field {}",
-                        serviceType.getName(), f.getName());
+                log.debug("Injected service {} into field {}", serviceType.getName(), f.getName());
             } else {
-                log.warn("Service {} not found for field {}",
-                        serviceType.getName(), f.getName());
+                log.warn("Service {} not found for field {}", serviceType.getName(), f.getName());
             }
         }
     }

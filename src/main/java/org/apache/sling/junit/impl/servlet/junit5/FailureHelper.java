@@ -30,9 +30,7 @@ public final class FailureHelper {
 
     @Nullable
     public static Failure convert(TestIdentifier testIdentifier, Throwable throwable) {
-        return toDescription(testIdentifier)
-                .map(d -> new Failure(d, throwable))
-                .orElse(null);
+        return toDescription(testIdentifier).map(d -> new Failure(d, throwable)).orElse(null);
     }
 
     @Nullable

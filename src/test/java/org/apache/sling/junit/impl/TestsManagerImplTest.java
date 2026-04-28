@@ -1,20 +1,42 @@
 /*
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements.  See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License.  You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.sling.junit.impl;
+
+import javax.servlet.http.HttpServletResponse;
+
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.Dictionary;
+import java.util.Enumeration;
+import java.util.HashSet;
+import java.util.Hashtable;
+import java.util.List;
+import java.util.Set;
+import java.util.concurrent.TimeUnit;
+import java.util.function.BiConsumer;
+import java.util.stream.Collectors;
 
 import org.apache.sling.junit.Renderer;
 import org.apache.sling.junit.RequestParser;
@@ -33,25 +55,6 @@ import org.osgi.framework.Constants;
 import org.osgi.framework.InvalidSyntaxException;
 import org.osgi.framework.ServiceReference;
 import org.osgi.framework.wiring.BundleWiring;
-
-import javax.servlet.http.HttpServletResponse;
-import java.io.IOException;
-import java.io.PrintWriter;
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.Dictionary;
-import java.util.Enumeration;
-import java.util.HashSet;
-import java.util.Hashtable;
-import java.util.List;
-import java.util.Set;
-import java.util.concurrent.TimeUnit;
-import java.util.function.BiConsumer;
-import java.util.stream.Collectors;
 
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
@@ -163,12 +166,11 @@ public class TestsManagerImplTest {
 
         final BundleContext bundleContext = mock(BundleContext.class);
         when(bundleContext.getBundle()).thenReturn(bundle);
-        when(bundleContext.getBundles()).thenAnswer(m -> new Bundle[]{bundle});
+        when(bundleContext.getBundles()).thenAnswer(m -> new Bundle[] {bundle});
 
         when(bundle.getBundleContext()).thenReturn(bundleContext);
         return bundleContext;
     }
-
 
     @Test
     public void testGettingTestNamesAndClassesAndExecution() throws Exception {
@@ -179,27 +181,21 @@ public class TestsManagerImplTest {
 
             final List<String> testClasses = asList(
                     "org.apache.sling.junit.testbundle" + i + ".ASlingJUnit",
-                    "org.apache.sling.junit.testbundle" + i + ".impl.ANestedSlingJUnit"
-            );
+                    "org.apache.sling.junit.testbundle" + i + ".impl.ANestedSlingJUnit");
 
             allTestClasses.addAll(testClasses);
 
             final List<String> nonTestClasses = asList(
                     "org.apache.sling.junit.testbundle" + i + ".NotATest",
                     "org.apache.sling.junit.testbundle" + i + ".impl.AlsoNotATest",
-                    "org.apache.sling.junit.testbundle" + i + ".CompletelyUnrelated"
-            );
+                    "org.apache.sling.junit.testbundle" + i + ".CompletelyUnrelated");
 
             final List<String> classes = new ArrayList<>();
             classes.addAll(testClasses);
             classes.addAll(nonTestClasses);
             classes.sort(Comparator.naturalOrder());
 
-            createTestBundle(
-                    "test-bundle-" + i,
-                    "org.apache.sling.junit.testbundle" + i + ".*SlingJUnit",
-                    classes
-            );
+            createTestBundle("test-bundle-" + i, "org.apache.sling.junit.testbundle" + i + ".*SlingJUnit", classes);
         }
 
         createTestBundle("test-bundle-no-tests", "org.apache.sling.junit.notests.*SlingJUnit", emptyList());
@@ -210,18 +206,22 @@ public class TestsManagerImplTest {
         final Bundle junitBundle = createMockBundle("junit-bundle", Bundle.ACTIVE);
         addBundleWiring(junitBundle, VintageTestEngine.class.getClassLoader());
         final BundleContext bundleContext = junitBundle.getBundleContext();
-        final BundleTestsProvider bundleTestsProvider =
-                activateAndRegister(bundleContext, TestsProvider.class, new BundleTestsProvider(), BundleTestsProvider::activate);
-        final TestsManagerImpl testsManager =
-                activateAndRegister(bundleContext, TestsManager.class, new TestsManagerImpl(), TestsManagerImpl::activate);
+        final BundleTestsProvider bundleTestsProvider = activateAndRegister(
+                bundleContext, TestsProvider.class, new BundleTestsProvider(), BundleTestsProvider::activate);
+        final TestsManagerImpl testsManager = activateAndRegister(
+                bundleContext, TestsManager.class, new TestsManagerImpl(), TestsManagerImpl::activate);
 
         final RequestParser selector = new RequestParser(null);
         final Collection<String> testNames = testsManager.getTestNames(selector);
 
-        assertThat("should find all tests", testNames, Matchers.containsInAnyOrder(allTestClasses.toArray(new String[0])));
+        assertThat(
+                "should find all tests", testNames, Matchers.containsInAnyOrder(allTestClasses.toArray(new String[0])));
 
         for (String testName : testNames) {
-            assertThat("should be able to load class " + testName, testsManager.getTestClass(testName), Matchers.isA(Class.class));
+            assertThat(
+                    "should be able to load class " + testName,
+                    testsManager.getTestClass(testName),
+                    Matchers.isA(Class.class));
         }
 
         try {
@@ -232,12 +232,16 @@ public class TestsManagerImplTest {
         }
 
         testsManager.executeTests(createRenderer(), null);
-        testsManager.executeTests(createRenderer(), new RequestParser("org.apache.sling.junit.testbundle0.ASlingJUnit/.html"));
-        testsManager.executeTests(createRenderer(), new RequestParser("org.apache.sling.junit.testbundle0.ASlingJUnit/testSuccessful.html"));
+        testsManager.executeTests(
+                createRenderer(), new RequestParser("org.apache.sling.junit.testbundle0.ASlingJUnit/.html"));
+        testsManager.executeTests(
+                createRenderer(),
+                new RequestParser("org.apache.sling.junit.testbundle0.ASlingJUnit/testSuccessful.html"));
 
         {
             final Renderer renderer = createRenderer();
-            final RequestParser requestParser = new RequestParser("org.apache.sling.junit.testbundle0/testSuccessful.html");
+            final RequestParser requestParser =
+                    new RequestParser("org.apache.sling.junit.testbundle0/testSuccessful.html");
             try {
                 testsManager.executeTests(renderer, requestParser);
                 fail("IllegalStateException expected when selecting method for multiple tests");
@@ -274,7 +278,8 @@ public class TestsManagerImplTest {
         addBundleWiring(bundle, emptyMockClassloader());
     }
 
-    private <T> T activateAndRegister(BundleContext bundleContext, Class<? super T> interfaze, T service, BiConsumer<T, BundleContext> activator)
+    private <T> T activateAndRegister(
+            BundleContext bundleContext, Class<? super T> interfaze, T service, BiConsumer<T, BundleContext> activator)
             throws InvalidSyntaxException {
         activator.accept(service, bundleContext);
         registerService(bundleContext, service, interfaze);
@@ -306,8 +311,7 @@ public class TestsManagerImplTest {
 
         when(bundle.getBundleContext()).thenReturn(bundleContext);
 
-        when(bundleContext.getBundles())
-                .thenAnswer(m -> mockBundles.toArray(new Bundle[0]));
+        when(bundleContext.getBundles()).thenAnswer(m -> mockBundles.toArray(new Bundle[0]));
 
         mockBundles.add(bundle);
 
@@ -338,8 +342,10 @@ public class TestsManagerImplTest {
         return classLoader;
     }
 
-    private static <T> void registerService(BundleContext bundleContext, T service, Class<? super T> interfaze) throws InvalidSyntaxException {
-        @SuppressWarnings("unchecked") final ServiceReference<T> serviceReference = (ServiceReference<T>) mock(ServiceReference.class);
+    private static <T> void registerService(BundleContext bundleContext, T service, Class<? super T> interfaze)
+            throws InvalidSyntaxException {
+        @SuppressWarnings("unchecked")
+        final ServiceReference<T> serviceReference = (ServiceReference<T>) mock(ServiceReference.class);
         final Set<ServiceReference<T>> references = Collections.singleton(serviceReference);
         when(bundleContext.getServiceReferences(interfaze, null)).thenAnswer(m -> references);
         when(bundleContext.getServiceReferences(interfaze.getName(), null))

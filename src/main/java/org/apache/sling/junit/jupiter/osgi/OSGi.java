@@ -18,16 +18,16 @@
  */
 package org.apache.sling.junit.jupiter.osgi;
 
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.osgi.framework.Bundle;
-import org.osgi.framework.BundleContext;
-import org.osgi.framework.FrameworkUtil;
-
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Inherited;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
+
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.osgi.framework.Bundle;
+import org.osgi.framework.BundleContext;
+import org.osgi.framework.FrameworkUtil;
 
 /**
  * OSGi test annotation, for running unit tests within OSGi frameworks. The annotation supports
@@ -41,10 +41,6 @@ import java.lang.annotation.Target;
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.TYPE, ElementType.METHOD})
-@ExtendWith({
-        BundleParameterResolver.class,
-        BundleContextParameterResolver.class,
-        ServiceParameterResolver.class
-})
+@ExtendWith({BundleParameterResolver.class, BundleContextParameterResolver.class, ServiceParameterResolver.class})
 @Inherited
 public @interface OSGi {}

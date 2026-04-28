@@ -18,6 +18,9 @@
  */
 package org.apache.sling.junit.impl.servlet.junit5;
 
+import java.util.Objects;
+import java.util.stream.Stream;
+
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.junit.platform.commons.util.ReflectionUtils;
@@ -30,9 +33,6 @@ import org.junit.platform.launcher.TestExecutionListener;
 import org.junit.platform.launcher.core.LauncherConfig;
 import org.junit.platform.launcher.core.LauncherDiscoveryRequestBuilder;
 import org.junit.platform.launcher.core.LauncherFactory;
-
-import java.util.Objects;
-import java.util.stream.Stream;
 
 import static org.junit.platform.engine.discovery.DiscoverySelectors.selectMethod;
 
@@ -52,7 +52,11 @@ public final class JUnitPlatformHelper {
      * @param testMethodName  the name of a test method in the given test class or null to run all test methods
      * @param listeners   any number of {@code TestExecutionListener}s that should be notified
      */
-    public static void executeTest(@NotNull TestEngine testEngine, @NotNull Class<?> testClass, @Nullable String testMethodName, @NotNull TestExecutionListener... listeners) {
+    public static void executeTest(
+            @NotNull TestEngine testEngine,
+            @NotNull Class<?> testClass,
+            @Nullable String testMethodName,
+            @NotNull TestExecutionListener... listeners) {
         final Launcher launcher = JUnitPlatformHelper.createLauncher(testEngine);
         final LauncherDiscoveryRequest request = testMethodName != null
                 ? JUnitPlatformHelper.methodRequest(testClass, testMethodName)
@@ -94,7 +98,6 @@ public final class JUnitPlatformHelper {
         return requestBuilder.build();
     }
 
-
     /**
      * Utility to create a {@link LauncherDiscoveryRequest} for all test methods of the specified test class(es).
      *
@@ -103,12 +106,9 @@ public final class JUnitPlatformHelper {
      */
     @NotNull
     public static LauncherDiscoveryRequest classesRequest(Class<?>... testClasses) {
-        final DiscoverySelector[] selectors = Stream.of(testClasses)
-                .map(DiscoverySelectors::selectClass)
-                .toArray(DiscoverySelector[]::new);
-        return LauncherDiscoveryRequestBuilder.request()
-                .selectors(selectors)
-                .build();
+        final DiscoverySelector[] selectors =
+                Stream.of(testClasses).map(DiscoverySelectors::selectClass).toArray(DiscoverySelector[]::new);
+        return LauncherDiscoveryRequestBuilder.request().selectors(selectors).build();
     }
 
     private JUnitPlatformHelper() {

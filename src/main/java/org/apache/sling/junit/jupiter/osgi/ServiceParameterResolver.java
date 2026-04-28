@@ -18,6 +18,19 @@
  */
 package org.apache.sling.junit.jupiter.osgi;
 
+import java.lang.reflect.AnnotatedElement;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.function.Function;
+import java.util.stream.Stream;
+
 import org.apache.sling.junit.jupiter.osgi.impl.AbstractTypeBasedParameterResolver;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -34,39 +47,34 @@ import org.osgi.framework.InvalidSyntaxException;
 import org.osgi.framework.ServiceReference;
 import org.osgi.util.tracker.ServiceTracker;
 
-import java.lang.reflect.AnnotatedElement;
-import java.lang.reflect.ParameterizedType;
-import java.lang.reflect.Type;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.function.Function;
-import java.util.stream.Stream;
-
 class ServiceParameterResolver extends AbstractTypeBasedParameterResolver {
 
-    private static final ExtensionContext.Namespace NAMESPACE = ExtensionContext.Namespace.create(ServiceParameterResolver.class);
+    private static final ExtensionContext.Namespace NAMESPACE =
+            ExtensionContext.Namespace.create(ServiceParameterResolver.class);
 
     @Override
-    protected boolean supportsParameter(@NotNull ParameterContext parameterContext, @NotNull ExtensionContext extensionContext, @NotNull Type resolvedParameterType) {
+    protected boolean supportsParameter(
+            @NotNull ParameterContext parameterContext,
+            @NotNull ExtensionContext extensionContext,
+            @NotNull Type resolvedParameterType) {
         final Optional<Service> service = computeServiceType(resolvedParameterType)
                 .flatMap(serviceType -> findServiceAnnotation(parameterContext, extensionContext, serviceType));
-        return service
-                .isPresent();
+        return service.isPresent();
     }
 
     @Override
-    protected Object resolveParameter(@NotNull ParameterContext parameterContext, @NotNull ExtensionContext extensionContext, @NotNull Type resolvedParameterType) {
+    protected Object resolveParameter(
+            @NotNull ParameterContext parameterContext,
+            @NotNull ExtensionContext extensionContext,
+            @NotNull Type resolvedParameterType) {
         final ServiceHolder.Key key = computeServiceType(resolvedParameterType)
                 .flatMap(serviceType -> findServiceAnnotation(parameterContext, extensionContext, serviceType)
                         .map(ann -> toKey(serviceType, ann)))
                 .orElseThrow(() -> new ParameterResolutionException("Cannot handle type " + resolvedParameterType));
 
-        final ServiceHolder serviceHolder = extensionContext.getStore(NAMESPACE).getOrComputeIfAbsent(key, serviceHolderFactory(extensionContext), ServiceHolder.class);
+        final ServiceHolder serviceHolder = extensionContext
+                .getStore(NAMESPACE)
+                .getOrComputeIfAbsent(key, serviceHolderFactory(extensionContext), ServiceHolder.class);
         return isMultiple(resolvedParameterType) ? serviceHolder.getServices() : serviceHolder.getService();
     }
 
@@ -94,7 +102,8 @@ class ServiceParameterResolver extends AbstractTypeBasedParameterResolver {
     private static Class<?> getRawClass(ParameterizedType parameterizedType) {
         final Type rawType = parameterizedType.getRawType();
         if (!(rawType instanceof Class<?>)) {
-            throw new UnsupportedOperationException("Unexpected raw type of parametereized type " + parameterizedType + ": " + rawType);
+            throw new UnsupportedOperationException(
+                    "Unexpected raw type of parametereized type " + parameterizedType + ": " + rawType);
         }
         return (Class<?>) rawType;
     }
@@ -108,20 +117,26 @@ class ServiceParameterResolver extends AbstractTypeBasedParameterResolver {
     private static BundleContext getBundleContext(@NotNull ExtensionContext extensionContext) {
         return Optional.ofNullable(FrameworkUtil.getBundle(extensionContext.getRequiredTestClass()))
                 .map(Bundle::getBundleContext)
-                .orElseThrow(() -> new ParameterResolutionException("@OSGi and @Service annotations can only be used with tests running in an OSGi environment"));
+                .orElseThrow(() -> new ParameterResolutionException(
+                        "@OSGi and @Service annotations can only be used with tests running in an OSGi environment"));
     }
 
     @NotNull
-    private static Optional<Service> findServiceAnnotation(@NotNull ParameterContext parameterContext, @NotNull ExtensionContext extensionContext, @NotNull Class<?> requiredServiceType) {
+    private static Optional<Service> findServiceAnnotation(
+            @NotNull ParameterContext parameterContext,
+            @NotNull ExtensionContext extensionContext,
+            @NotNull Class<?> requiredServiceType) {
         return Stream.concat(
-                Stream.of(findMatchingServiceAnnotationOnParameter(parameterContext, requiredServiceType)),
-                Stream.of(parameterContext.getDeclaringExecutable(), extensionContext.getRequiredTestClass())
-                        .map(annotatedElement -> findMatchingServiceAnnotation(annotatedElement, requiredServiceType)))
+                        Stream.of(findMatchingServiceAnnotationOnParameter(parameterContext, requiredServiceType)),
+                        Stream.of(parameterContext.getDeclaringExecutable(), extensionContext.getRequiredTestClass())
+                                .map(annotatedElement ->
+                                        findMatchingServiceAnnotation(annotatedElement, requiredServiceType)))
                 .filter(Objects::nonNull)
                 .findFirst();
     }
 
-    private static Service findMatchingServiceAnnotationOnParameter(@NotNull ParameterContext parameterContext, @NotNull Class<?> requiredServiceType) {
+    private static Service findMatchingServiceAnnotationOnParameter(
+            @NotNull ParameterContext parameterContext, @NotNull Class<?> requiredServiceType) {
         final List<Service> serviceAnnotations = parameterContext.findRepeatableAnnotations(Service.class);
         switch (serviceAnnotations.size()) {
             case 0:
@@ -129,19 +144,23 @@ class ServiceParameterResolver extends AbstractTypeBasedParameterResolver {
             case 1:
                 final Service serviceAnnotation = serviceAnnotations.get(0);
                 if (!serviceAnnotation.value().isAssignableFrom(requiredServiceType)) {
-                    throw new ParameterResolutionException("Mismatched types in annotation and parameter. " +
-                            "Annotation type is \"" + serviceAnnotation.value().getSimpleName() + "\", parameter type is \"" + requiredServiceType.getSimpleName() + "\"");
+                    throw new ParameterResolutionException(
+                            "Mismatched types in annotation and parameter. " + "Annotation type is \""
+                                    + serviceAnnotation.value().getSimpleName() + "\", parameter type is \""
+                                    + requiredServiceType.getSimpleName() + "\"");
                 }
                 return serviceAnnotation;
             default:
-                throw new ParameterResolutionException("Parameters must not be annotated with multiple @Service annotations: " + parameterContext.getDeclaringExecutable());
+                throw new ParameterResolutionException(
+                        "Parameters must not be annotated with multiple @Service annotations: "
+                                + parameterContext.getDeclaringExecutable());
         }
     }
 
     @Nullable
-    private static Service findMatchingServiceAnnotation(@Nullable AnnotatedElement annotatedElement, @NotNull Class<?> requiredServiceType) {
-        return AnnotationSupport.findRepeatableAnnotations(annotatedElement, Service.class)
-                .stream()
+    private static Service findMatchingServiceAnnotation(
+            @Nullable AnnotatedElement annotatedElement, @NotNull Class<?> requiredServiceType) {
+        return AnnotationSupport.findRepeatableAnnotations(annotatedElement, Service.class).stream()
                 .filter(serviceAnnotation -> Objects.equals(serviceAnnotation.value(), requiredServiceType))
                 .findFirst()
                 .orElse(null);
@@ -174,14 +193,15 @@ class ServiceParameterResolver extends AbstractTypeBasedParameterResolver {
         }
 
         @Nullable
-        public Object getService() throws ParameterResolutionException{
+        public Object getService() throws ParameterResolutionException {
             final Object service = serviceTracker.getService();
             return checkCardinality(service, false);
         }
 
         @NotNull
         public List<Object> getServices() throws ParameterResolutionException {
-            @Nullable final Object[] services = serviceTracker.getServices();;
+            @Nullable final Object[] services = serviceTracker.getServices();
+            ;
             return Optional.ofNullable(checkCardinality(services, true))
                     .map(Arrays::asList)
                     .orElseGet(Collections::emptyList);
@@ -206,16 +226,20 @@ class ServiceParameterResolver extends AbstractTypeBasedParameterResolver {
         }
 
         @NotNull
-        private static ParameterResolutionException createServiceNotFoundException(@NotNull String ldapFilter, @NotNull Type resolvedParameterType) {
+        private static ParameterResolutionException createServiceNotFoundException(
+                @NotNull String ldapFilter, @NotNull Type resolvedParameterType) {
             return Optional.of(ldapFilter)
                     .map(String::trim)
                     .filter(filter -> !filter.isEmpty())
-                    .map(filter -> new ParameterResolutionException("No service of type \"" + resolvedParameterType.getTypeName() + "\" with filter \"" + filter + "\" available"))
-                    .orElseGet(() -> new ParameterResolutionException("No service of type \"" + resolvedParameterType.getTypeName() + "\" available"));
+                    .map(filter -> new ParameterResolutionException("No service of type \""
+                            + resolvedParameterType.getTypeName() + "\" with filter \"" + filter + "\" available"))
+                    .orElseGet(() -> new ParameterResolutionException(
+                            "No service of type \"" + resolvedParameterType.getTypeName() + "\" available"));
         }
 
         @NotNull
-        private static Filter createFilter(@NotNull BundleContext bundleContext, @NotNull Class<?> clazz, @NotNull String ldapFilter) {
+        private static Filter createFilter(
+                @NotNull BundleContext bundleContext, @NotNull Class<?> clazz, @NotNull String ldapFilter) {
             final String classFilter = String.format("(%s=%s)", Constants.OBJECTCLASS, clazz.getName());
             final String combinedFilter;
             if (ldapFilter.trim().isEmpty()) {
@@ -226,7 +250,8 @@ class ServiceParameterResolver extends AbstractTypeBasedParameterResolver {
             try {
                 return bundleContext.createFilter(combinedFilter);
             } catch (InvalidSyntaxException e) {
-                throw new ParameterResolutionException("Invalid filter expression used in @Service annotation :\"" + ldapFilter + "\"", e);
+                throw new ParameterResolutionException(
+                        "Invalid filter expression used in @Service annotation :\"" + ldapFilter + "\"", e);
             }
         }
 
@@ -281,7 +306,7 @@ class ServiceParameterResolver extends AbstractTypeBasedParameterResolver {
                 Key key = (Key) o;
                 return this == o
                         || (Objects.equals(serviceType, key.serviceType)
-                        && Objects.equals(serviceAnnotation, key.serviceAnnotation));
+                                && Objects.equals(serviceAnnotation, key.serviceAnnotation));
             }
 
             @Override

@@ -18,14 +18,14 @@
  */
 package org.apache.sling.junit.jupiter.osgi.impl;
 
+import java.lang.reflect.Type;
+import java.lang.reflect.TypeVariable;
+import java.util.Map;
+
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.api.extension.ParameterContext;
 import org.junit.jupiter.api.extension.ParameterResolver;
-
-import java.lang.reflect.Type;
-import java.lang.reflect.TypeVariable;
-import java.util.Map;
 
 import static org.apache.sling.junit.jupiter.osgi.impl.ReflectionHelper.determineTypeArguments;
 
@@ -37,9 +37,15 @@ import static org.apache.sling.junit.jupiter.osgi.impl.ReflectionHelper.determin
  */
 public abstract class AbstractTypeBasedParameterResolver implements ParameterResolver {
 
-    protected abstract boolean supportsParameter(@NotNull ParameterContext parameterContext, @NotNull ExtensionContext extensionContext, @NotNull Type resolvedParameterType);
+    protected abstract boolean supportsParameter(
+            @NotNull ParameterContext parameterContext,
+            @NotNull ExtensionContext extensionContext,
+            @NotNull Type resolvedParameterType);
 
-    protected abstract Object resolveParameter(@NotNull ParameterContext parameterContext, @NotNull ExtensionContext extensionContext, @NotNull Type resolvedParameterType);
+    protected abstract Object resolveParameter(
+            @NotNull ParameterContext parameterContext,
+            @NotNull ExtensionContext extensionContext,
+            @NotNull Type resolvedParameterType);
 
     @Override
     public final boolean supportsParameter(ParameterContext parameterContext, ExtensionContext extensionContext) {
@@ -57,7 +63,8 @@ public abstract class AbstractTypeBasedParameterResolver implements ParameterRes
     private static Type getTypeOfParameter(ParameterContext parameterContext, ExtensionContext extensionContext) {
         Type type = parameterContext.getParameter().getParameterizedType();
         if (type instanceof TypeVariable) {
-            final Map<TypeVariable<?>, Type> typeVariableTypeMap = determineTypeArguments(extensionContext.getRequiredTestClass());
+            final Map<TypeVariable<?>, Type> typeVariableTypeMap =
+                    determineTypeArguments(extensionContext.getRequiredTestClass());
             return typeVariableTypeMap.getOrDefault(type, type);
         } else {
             return type;

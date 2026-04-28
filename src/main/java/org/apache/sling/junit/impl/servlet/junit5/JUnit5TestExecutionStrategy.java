@@ -18,6 +18,10 @@
  */
 package org.apache.sling.junit.impl.servlet.junit5;
 
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+
 import org.apache.sling.junit.TestSelector;
 import org.apache.sling.junit.impl.TestExecutionStrategy;
 import org.apache.sling.junit.impl.TestsManagerImpl;
@@ -26,25 +30,18 @@ import org.junit.platform.launcher.LauncherDiscoveryRequest;
 import org.junit.runner.notification.RunListener;
 import org.osgi.framework.BundleContext;
 
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-
 public class JUnit5TestExecutionStrategy implements TestExecutionStrategy {
 
     // we assume that if we can load these two classes, the setup is ok for junit 5
-    private static final List<String> REQUIRED_CLASSES = Collections.unmodifiableList(Arrays.asList(
-            "org.junit.platform.engine.TestEngine",
-            "org.junit.platform.launcher.Launcher"
-    ));
+    private static final List<String> REQUIRED_CLASSES = Collections.unmodifiableList(
+            Arrays.asList("org.junit.platform.engine.TestEngine", "org.junit.platform.launcher.Launcher"));
 
     public static boolean canLoadRequiredClasses() {
         final ClassLoader classLoader = JUnit5TestExecutionStrategy.class.getClassLoader();
-        return REQUIRED_CLASSES.stream()
-                .allMatch(name -> {
-                    String path = name.replace('.', '/').concat(".class");
-                    return classLoader.getResource(path) != null;
-                });
+        return REQUIRED_CLASSES.stream().allMatch(name -> {
+            String path = name.replace('.', '/').concat(".class");
+            return classLoader.getResource(path) != null;
+        });
     }
 
     private final TestsManagerImpl testsManager;
@@ -64,9 +61,8 @@ public class JUnit5TestExecutionStrategy implements TestExecutionStrategy {
     @Override
     public void execute(TestSelector selector, RunListener runListener) throws Exception {
         Launcher launcher = JUnitPlatformHelper.createLauncher(testEngineTracker.getAvailableTestEngines());
-        final LauncherDiscoveryRequest request = testsManager.createTestRequest(selector,
-                JUnitPlatformHelper::methodRequest,
-                JUnitPlatformHelper::classesRequest);
+        final LauncherDiscoveryRequest request = testsManager.createTestRequest(
+                selector, JUnitPlatformHelper::methodRequest, JUnitPlatformHelper::classesRequest);
         launcher.execute(request, new RunListenerAdapter(runListener));
     }
 }

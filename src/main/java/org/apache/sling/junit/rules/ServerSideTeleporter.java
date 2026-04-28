@@ -1,18 +1,20 @@
 /*
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements.  See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License.  You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.sling.junit.rules;
 
@@ -49,12 +51,12 @@ class ServerSideTeleporter extends TeleporterRule {
         }
         bundleUnderTest = bundle;
     }
-    
+
     @Override
     protected void after() {
         super.after();
-        for(ServiceGetter<?> serviceGetter : serviceGettersToClose) {
-            if(serviceGetter != null) {
+        for (ServiceGetter<?> serviceGetter : serviceGettersToClose) {
+            if (serviceGetter != null) {
                 serviceGetter.close();
             }
         }
@@ -63,8 +65,8 @@ class ServerSideTeleporter extends TeleporterRule {
     /**
      * Get OSGi service - if it is not available (yet?) try again and again until the configured timeout is reached.
      */
-    public <T> T getService (Class<T> serviceClass, String ldapFilter) {
-        String configuredTimeout = (String)bundleUnderTest.getHeaders().get("Sling-Test-WaitForService-Timeout");
+    public <T> T getService(Class<T> serviceClass, String ldapFilter) {
+        String configuredTimeout = (String) bundleUnderTest.getHeaders().get("Sling-Test-WaitForService-Timeout");
         if (configuredTimeout == null) {
             configuredTimeout = Integer.toString(WAITFOR_SERVICE_TIMEOUT_DEFAULT_SECONDS);
         }
@@ -76,7 +78,9 @@ class ServerSideTeleporter extends TeleporterRule {
             }
         } catch (InterruptedException e) {
             throw new IllegalStateException(
-                    "unable to get a service reference before timeout, class=" + serviceClass.getName() + ", filter='" + ldapFilter + "'", e);
+                    "unable to get a service reference before timeout, class=" + serviceClass.getName() + ", filter='"
+                            + ldapFilter + "'",
+                    e);
         } catch (InvalidSyntaxException e) {
             throw new IllegalArgumentException("Invalid syntax for argument ldapFilter", e);
         }
@@ -84,7 +88,7 @@ class ServerSideTeleporter extends TeleporterRule {
                 "unable to get a service reference, class=" + serviceClass.getName() + ", filter='" + ldapFilter + "'");
     }
 
-    private <T> T getServiceInternal (Class<T> serviceClass, String ldapFilter, long timeoutMs)
+    private <T> T getServiceInternal(Class<T> serviceClass, String ldapFilter, long timeoutMs)
             throws InterruptedException, InvalidSyntaxException {
         ServiceGetter<T> serviceGetter = ServiceGetter.create(bundleContext, serviceClass, ldapFilter);
         serviceGettersToClose.add(serviceGetter);

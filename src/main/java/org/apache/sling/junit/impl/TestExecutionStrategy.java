@@ -18,10 +18,10 @@
  */
 package org.apache.sling.junit.impl;
 
+import java.io.Closeable;
+
 import org.apache.sling.junit.TestSelector;
 import org.junit.runner.notification.RunListener;
-
-import java.io.Closeable;
 
 public interface TestExecutionStrategy extends Closeable {
 
