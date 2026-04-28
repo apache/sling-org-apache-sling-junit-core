@@ -6,4 +6,47 @@
 
 This module is part of the [Apache Sling](https://sling.apache.org) project.
 
-Runs JUnit tests in an OSGi framework and provides the JUnit libraries
+Runs JUnit tests in an OSGi framework and provides the JUnit/Hamcrest APIs used by remote test bundles.
+
+## What this bundle provides
+
+- Test discovery and execution inside a running Sling/OSGi runtime.
+- Servlet-based test endpoints with HTML, JSON, XML, and text renderers.
+- Runtime support for JUnit 4, plus optional JUnit 5 (Jupiter/Platform) integration when JUnit 5 classes are available.
+- Exported JUnit and Hamcrest packages for remote test bundles.
+
+## Build and test
+
+Use Maven from the repository root:
+
+```bash
+mvn -B -ntp clean package
+```
+
+```bash
+mvn -B -ntp test
+```
+
+```bash
+mvn -B -ntp clean verify
+```
+
+Notes:
+
+- `verify` is heavier than `test` because it also runs Maven Invoker integration tests from `src/it`.
+- Running `src/it/annotations-it` directly requires `-Dannotations.bundle.version=<version>`.
+
+## Repository structure
+
+- `src/main/java` - Bundle APIs and implementation.
+- `src/main/resources` - Static resources (for example `junit.css`).
+- `src/test/java` - Unit tests (JUnit 4 and JUnit 5).
+- `src/it/annotations-it` - Integration tests (Maven Invoker / Pax Exam).
+- `bnd.bnd` - OSGi manifest instructions, including exported JUnit/Hamcrest packages.
+
+## Key dependencies and runtime behavior
+
+- Uses `jakarta.json-api` (migration from `javax.json`).
+- Uses `org.apache.commons:commons-lang3` 3.18.0.
+- JUnit 4.13.2 and Hamcrest 1.3 are exported for remote test compatibility.
+- JUnit 5 support is optional at runtime and activated when platform classes are present.
