@@ -30,18 +30,14 @@ import org.apache.sling.junit.it.impl.MyCoolServiceForTestingIT;
 import org.apache.sling.junit.it.impl.MyLameServiceForTestingIT;
 import static org.apache.sling.testing.paxexam.SlingOptions.slingServlets;
 import static org.apache.sling.testing.paxexam.SlingOptions.versionResolver;
-import static org.apache.sling.testing.paxexam.SlingOptions.logback;
 import static org.ops4j.pax.exam.CoreOptions.options;
 import static org.ops4j.pax.exam.CoreOptions.when;
 import static org.ops4j.pax.exam.CoreOptions.mavenBundle;
-import static org.ops4j.pax.exam.CoreOptions.wrappedBundle;
 import static org.ops4j.pax.exam.CoreOptions.systemProperty;
 
 import java.net.URI;
 
 public class AnnotationsTestSupport extends TestSupport {
-
-    private final static int STARTUP_WAIT_SECONDS = 60;
 
     protected OsgiConsoleClient CLIENT;
     protected static int httpPort;
@@ -63,6 +59,8 @@ public class AnnotationsTestSupport extends TestSupport {
         if (StringUtils.isNotEmpty(jacocoOpt)) {
             jacocoCommand = new VMOption(jacocoOpt);
         }
+
+        versionResolver.setVersion("org.apache.commons", "commons-lang3", "3.18.0");
 
         return options(
             when(vmOption != null).useOptions(vmOption),
