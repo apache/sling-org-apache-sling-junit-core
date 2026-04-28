@@ -18,12 +18,12 @@
  */
 package org.apache.sling.junit.jupiter.osgi.impl;
 
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
+
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.api.extension.ParameterContext;
-
-import java.lang.reflect.ParameterizedType;
-import java.lang.reflect.Type;
 
 import static org.apache.sling.junit.jupiter.osgi.impl.ReflectionHelper.parameterizedTypeForBaseClass;
 
@@ -40,15 +40,22 @@ public abstract class TypeBasedParameterResolver<T> extends AbstractTypeBasedPar
     private final Type supportedType;
 
     protected TypeBasedParameterResolver() {
-        ParameterizedType parameterizedType = parameterizedTypeForBaseClass(TypeBasedParameterResolver.class, getClass());
+        ParameterizedType parameterizedType =
+                parameterizedTypeForBaseClass(TypeBasedParameterResolver.class, getClass());
         this.supportedType = parameterizedType.getActualTypeArguments()[0];
     }
 
     @Override
-    protected boolean supportsParameter(@NotNull ParameterContext parameterContext, @NotNull ExtensionContext extensionContext, @NotNull Type resolvedParameterType) {
+    protected boolean supportsParameter(
+            @NotNull ParameterContext parameterContext,
+            @NotNull ExtensionContext extensionContext,
+            @NotNull Type resolvedParameterType) {
         return supportedType == resolvedParameterType;
     }
 
     @Override
-    protected abstract T resolveParameter(@NotNull ParameterContext parameterContext, @NotNull ExtensionContext extensionContext, @NotNull Type resolvedParameterType);
+    protected abstract T resolveParameter(
+            @NotNull ParameterContext parameterContext,
+            @NotNull ExtensionContext extensionContext,
+            @NotNull Type resolvedParameterType);
 }

@@ -1,18 +1,20 @@
 /*
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements.  See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License.  You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.sling.junit.rules;
 
@@ -41,7 +43,8 @@ public abstract class TeleporterRule extends ExternalResource {
      */
     public static final String CUSTOMIZER_PATTERN = "org.apache.sling.junit.teleporter.customizers.<NAME>Customizer";
 
-    private static final String DEFAULT_CUSTOMIZER_CLASS = "org.apache.sling.testing.teleporter.client.DefaultPropertyBasedCustomizer";
+    private static final String DEFAULT_CUSTOMIZER_CLASS =
+            "org.apache.sling.testing.teleporter.client.DefaultPropertyBasedCustomizer";
 
     /**
      * Customizer is used client-side to setup the server URL and other parameters
@@ -56,8 +59,7 @@ public abstract class TeleporterRule extends ExternalResource {
     /**
      * Meant to be instantiated via {@link #forClass}
      */
-    protected TeleporterRule() {
-    }
+    protected TeleporterRule() {}
 
     protected void setClassUnderTest(Class<?> c) {
         this.classUnderTest = c;
@@ -97,7 +99,7 @@ public abstract class TeleporterRule extends ExternalResource {
         if (isServerSide()) {
             result = new ServerSideTeleporter(classUnderTest);
         } else {
-            // Client-side. Instantiate the class dynamically to 
+            // Client-side. Instantiate the class dynamically to
             // avoid bringing its dependencies into this module when
             // it's running on the server side
             try {
@@ -144,7 +146,8 @@ public abstract class TeleporterRule extends ExternalResource {
     @SuppressWarnings("unchecked")
     protected static <T> T createInstance(Class<T> objectClass, String className) {
         try {
-            return (T) (TeleporterRule.class.getClassLoader().loadClass(className).newInstance());
+            return (T)
+                    (TeleporterRule.class.getClassLoader().loadClass(className).newInstance());
         } catch (Exception e) {
             throw new RuntimeException("Unable to instantiate " + className, e);
         }

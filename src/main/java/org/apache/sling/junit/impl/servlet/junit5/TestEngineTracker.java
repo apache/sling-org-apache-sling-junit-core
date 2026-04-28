@@ -18,6 +18,14 @@
  */
 package org.apache.sling.junit.impl.servlet.junit5;
 
+import java.io.Closeable;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.ServiceLoader;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicReference;
+
 import org.jetbrains.annotations.NotNull;
 import org.junit.platform.engine.TestEngine;
 import org.osgi.framework.Bundle;
@@ -29,18 +37,10 @@ import org.osgi.util.tracker.BundleTrackerCustomizer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.Closeable;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.ServiceLoader;
-import java.util.Set;
-import java.util.concurrent.atomic.AtomicReference;
-
 public class TestEngineTracker implements Closeable {
 
     private static final Logger LOG = LoggerFactory.getLogger(TestEngineTracker.class);
-    
+
     private final BundleTracker<AtomicReference<Set<TestEngine>>> tracker;
 
     public TestEngineTracker(BundleContext bundleContext) {
@@ -80,8 +80,8 @@ public class TestEngineTracker implements Closeable {
         @NotNull
         private static Set<TestEngine> getTestEnginesForBundle(Bundle bundle) {
             final Set<TestEngine> testEngines = new HashSet<>();
-            ServiceLoader
-                    .load(TestEngine.class, bundle.adapt(BundleWiring.class).getClassLoader())
+            ServiceLoader.load(
+                            TestEngine.class, bundle.adapt(BundleWiring.class).getClassLoader())
                     .forEach(testEngine -> {
                         LOG.info("Found TestEngine '{}' in bundle '{}'", testEngine.getId(), bundle.getSymbolicName());
                         testEngines.add(testEngine);

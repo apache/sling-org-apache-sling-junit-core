@@ -18,16 +18,14 @@
  */
 package org.apache.sling.junit.jupiter.osgi;
 
-import org.osgi.annotation.versioning.ConsumerType;
-import org.osgi.annotation.versioning.ProviderType;
-import org.osgi.framework.Filter;
-
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Inherited;
 import java.lang.annotation.Repeatable;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
+
+import org.osgi.framework.Filter;
 
 /**
  * The {@code @Service} annotation is to be used for test classes or methods annotated
@@ -88,4 +86,3 @@ public @interface Service {
      */
     ServiceCardinality cardinality() default ServiceCardinality.AUTO;
 }
-

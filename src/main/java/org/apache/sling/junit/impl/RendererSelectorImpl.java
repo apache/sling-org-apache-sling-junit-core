@@ -1,18 +1,20 @@
 /*
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements.  See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License.  You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.sling.junit.impl;
 
@@ -43,36 +45,35 @@ public class RendererSelectorImpl implements RendererSelector {
     private ServiceTracker renderersTracker;
     private int renderersTrackerTrackingCount = -1;
     private BundleContext bundleContext;
-    
+
     public Collection<Renderer> getRenderers() {
         return Collections.unmodifiableCollection(renderers);
     }
-    
+
     public Renderer getRenderer(TestSelector selector) {
-        if(renderersTracker.getTrackingCount() != renderersTrackerTrackingCount) {
+        if (renderersTracker.getTrackingCount() != renderersTrackerTrackingCount) {
             log.debug("Rebuilding list of {}", Renderer.class.getSimpleName());
             renderersTrackerTrackingCount = renderersTracker.getTrackingCount();
-            final ServiceReference [] refs = renderersTracker.getServiceReferences();
+            final ServiceReference[] refs = renderersTracker.getServiceReferences();
             renderers.clear();
-            if(refs != null) {
-                for(ServiceReference ref : refs) {
-                    renderers.add( (Renderer)bundleContext.getService(ref) );
+            if (refs != null) {
+                for (ServiceReference ref : refs) {
+                    renderers.add((Renderer) bundleContext.getService(ref));
                 }
             }
-            log.info("List of {} rebuilt: {}", 
-                    Renderer.class.getSimpleName(),
-                    renderers);
+            log.info("List of {} rebuilt: {}", Renderer.class.getSimpleName(), renderers);
         }
-        
-        for(Renderer r : renderers) {
-            if(r.appliesTo(selector)) {
-                if(r instanceof RendererFactory) {
-                    return ((RendererFactory)r).createRenderer();
+
+        for (Renderer r : renderers) {
+            if (r.appliesTo(selector)) {
+                if (r instanceof RendererFactory) {
+                    return ((RendererFactory) r).createRenderer();
                 }
-                throw new UnsupportedOperationException("Renderers must implement RendererFactory, this one does not:" + r);
+                throw new UnsupportedOperationException(
+                        "Renderers must implement RendererFactory, this one does not:" + r);
             }
         }
-        
+
         return null;
     }
 
@@ -82,10 +83,10 @@ public class RendererSelectorImpl implements RendererSelector {
         renderersTracker = new ServiceTracker(ctx.getBundleContext(), Renderer.class.getName(), null);
         renderersTracker.open();
     }
-    
+
     @Deactivate
     protected void deactivate(ComponentContext ctx) {
-        if(renderersTracker != null) {
+        if (renderersTracker != null) {
             renderersTracker.close();
             renderersTracker = null;
         }

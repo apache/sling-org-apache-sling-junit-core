@@ -18,6 +18,9 @@
  */
 package org.apache.sling.junit.jupiter.osgi;
 
+import java.lang.reflect.Type;
+import java.util.Optional;
+
 import org.apache.sling.junit.jupiter.osgi.impl.TypeBasedParameterResolver;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.extension.ExtensionContext;
@@ -26,13 +29,14 @@ import org.junit.jupiter.api.extension.ParameterResolutionException;
 import org.osgi.framework.Bundle;
 import org.osgi.framework.FrameworkUtil;
 
-import java.lang.reflect.Type;
-import java.util.Optional;
-
 class BundleParameterResolver extends TypeBasedParameterResolver<Bundle> {
     @Override
-    protected Bundle resolveParameter(@NotNull ParameterContext parameterContext, @NotNull ExtensionContext extensionContext, @NotNull Type resolvedParameterType) {
+    protected Bundle resolveParameter(
+            @NotNull ParameterContext parameterContext,
+            @NotNull ExtensionContext extensionContext,
+            @NotNull Type resolvedParameterType) {
         return Optional.ofNullable(FrameworkUtil.getBundle(extensionContext.getRequiredTestClass()))
-                .orElseThrow(() -> new ParameterResolutionException("@OSGi and @Service annotations can only be used with tests running in an OSGi environment"));
+                .orElseThrow(() -> new ParameterResolutionException(
+                        "@OSGi and @Service annotations can only be used with tests running in an OSGi environment"));
     }
 }
