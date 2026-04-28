@@ -1,20 +1,33 @@
 /*
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements.  See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License.  You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.sling.junit.impl;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.Set;
+import java.util.concurrent.TimeUnit;
+import java.util.function.BiFunction;
+import java.util.function.Function;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.apache.sling.junit.Renderer;
 import org.apache.sling.junit.RequestParser;
@@ -33,17 +46,6 @@ import org.osgi.service.component.annotations.Deactivate;
 import org.osgi.util.tracker.ServiceTracker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Set;
-import java.util.concurrent.TimeUnit;
-import java.util.function.BiFunction;
-import java.util.function.Function;
-import java.util.function.Predicate;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 @Component
 public class TestsManagerImpl implements TestsManager {
@@ -64,7 +66,7 @@ public class TestsManagerImpl implements TestsManager {
     private BundleContext bundleContext;
 
     private ServiceTracker<TestsProvider, TestsProvider> testsProviderTracker;
-    
+
     private TestExecutionStrategy executionStrategy;
 
     @Activate
@@ -74,7 +76,7 @@ public class TestsManagerImpl implements TestsManager {
         testsProviderTracker.open();
         if (JUnit5TestExecutionStrategy.canLoadRequiredClasses()) {
             executionStrategy = new JUnit5TestExecutionStrategy(this, ctx);
-        } else  {
+        } else {
             // (some) optional imports to org.junit.platform.* (JUnit5 API) are missing
             executionStrategy = new JUnit4TestExecutionStrategy(this);
         }
@@ -82,7 +84,7 @@ public class TestsManagerImpl implements TestsManager {
 
     @Deactivate
     protected void deactivate() {
-        if(testsProviderTracker != null) {
+        if (testsProviderTracker != null) {
             testsProviderTracker.close();
             testsProviderTracker = null;
         }
@@ -114,7 +116,7 @@ public class TestsManagerImpl implements TestsManager {
                 .sorted()
                 .collect(Collectors.toList());
         final int allTestsCount = tests.size();
-        if(selector == null) {
+        if (selector == null) {
             log.debug("No TestSelector supplied, returning all {} tests", allTestsCount);
         } else {
             tests.removeIf(testName -> !selector.acceptTestName(testName));
@@ -128,10 +130,12 @@ public class TestsManagerImpl implements TestsManager {
     }
 
     @Override
-    public void executeTests(@Nullable Collection<String> testNames, @NotNull Renderer renderer, @Nullable TestSelector selector) throws Exception {
+    public void executeTests(
+            @Nullable Collection<String> testNames, @NotNull Renderer renderer, @Nullable TestSelector selector)
+            throws Exception {
         if (selector != null) {
             executeTests(renderer, selector);
-        } else if (testNames != null){
+        } else if (testNames != null) {
             executeTests(renderer, new RequestParser(null) {
                 @Override
                 public boolean acceptTestName(String testName) {
@@ -150,9 +154,11 @@ public class TestsManagerImpl implements TestsManager {
         executionStrategy.execute(selector, new TestContextRunListenerWrapper(renderer.getRunListener()));
     }
 
-    public <T> T createTestRequest(TestSelector selector,
-                            BiFunction<Class<?>, String, T> methodRequestFactory,
-                            Function<Class<?>[], T> classesRequestFactory) throws ClassNotFoundException {
+    public <T> T createTestRequest(
+            TestSelector selector,
+            BiFunction<Class<?>, String, T> methodRequestFactory,
+            Function<Class<?>[], T> classesRequestFactory)
+            throws ClassNotFoundException {
         final T request;
         final Collection<String> testNames = getTestNames(selector);
         if (testNames.isEmpty()) {
@@ -198,7 +204,7 @@ public class TestsManagerImpl implements TestsManager {
 
     /** Wait for all bundles to be started
      *  @return number of msec taken by this method to execute
-    */
+     */
     long waitForSystemStartup() {
         long elapsedMsec = -1;
         if (waitForSystemStartup) {
@@ -223,12 +229,13 @@ public class TestsManagerImpl implements TestsManager {
             elapsedMsec = System.currentTimeMillis() - startTime;
 
             if (!bundlesToWaitFor.isEmpty()) {
-                log.warn("Waited {} milliseconds but the following bundles are not yet started: {}",
-                    elapsedMsec, bundlesToWaitFor);
+                log.warn(
+                        "Waited {} milliseconds but the following bundles are not yet started: {}",
+                        elapsedMsec,
+                        bundlesToWaitFor);
             } else {
                 log.info("All bundles are active, starting to run tests.");
             }
-
         }
 
         return elapsedMsec;

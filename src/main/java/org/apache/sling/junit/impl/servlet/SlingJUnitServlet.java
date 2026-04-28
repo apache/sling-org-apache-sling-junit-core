@@ -1,28 +1,30 @@
 /*
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements.  See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License.  You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.sling.junit.impl.servlet;
-
-import java.io.IOException;
 
 import javax.servlet.Servlet;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+
+import java.io.IOException;
 
 import org.apache.sling.junit.RendererSelector;
 import org.apache.sling.junit.TestSelector;
@@ -33,7 +35,6 @@ import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
 import org.osgi.service.component.annotations.Reference;
-import org.osgi.service.http.NamespaceException;
 
 /** Alternate entry point for testing, that uses
  *  the Sling request/response cycle.
@@ -53,8 +54,7 @@ import org.osgi.service.http.NamespaceException;
 @SlingServletResourceTypes(
         resourceTypes = "sling/junit/testing",
         extensions = "junit",
-        methods = {"GET", "POST"}
-)
+        methods = {"GET", "POST"})
 public class SlingJUnitServlet extends HttpServlet {
 
     public static final String EXTENSION = ".junit";
@@ -76,7 +76,7 @@ public class SlingJUnitServlet extends HttpServlet {
                 // by the .junit extension - cut up to that
                 String result = request.getPathInfo();
                 final int pos = result.indexOf(EXTENSION);
-                if(pos >= 0) {
+                if (pos >= 0) {
                     result = result.substring(pos + EXTENSION.length());
                 }
                 return result;
@@ -90,11 +90,7 @@ public class SlingJUnitServlet extends HttpServlet {
                 if (selectedTestMethodName != null && !"".equals(selectedTestMethodName)) {
                     methodStr = "/" + selectedTestMethodName;
                 }
-                return  "./"
-                + selector.getTestSelectorString()
-                + methodStr
-                + "."
-                + extension;
+                return "./" + selector.getTestSelectorString() + methodStr + "." + extension;
             }
         };
     }
@@ -105,14 +101,12 @@ public class SlingJUnitServlet extends HttpServlet {
     }
 
     @Override
-    protected void doGet(HttpServletRequest req, HttpServletResponse resp)
-            throws ServletException, IOException {
+    protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         this.processor.doGet(req, resp, null);
     }
 
     @Override
-    protected void doPost(HttpServletRequest req, HttpServletResponse resp)
-            throws ServletException, IOException {
+    protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         this.processor.doPost(req, resp);
     }
-    }
+}

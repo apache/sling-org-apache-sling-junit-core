@@ -18,14 +18,14 @@
  */
 package org.apache.sling.junit.impl;
 
+import java.util.Objects;
+
 import org.apache.sling.junit.TestSelector;
 import org.apache.sling.junit.sampletests.JUnit4SlingJUnit;
 import org.junit.Test;
 import org.junit.runner.Request;
 import org.junit.runner.Result;
 import org.junit.runner.notification.RunListener;
-
-import java.util.Objects;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
@@ -45,20 +45,20 @@ public class JUnit4TestExecutionStrategyTest {
         final JUnit4TestExecutionStrategy strategy = new JUnit4TestExecutionStrategy(testsManager);
         final RunListener runListener = mock(RunListener.class);
         strategy.execute(mock(TestSelector.class), runListener);
+        verify(runListener, times(1)).testRunStarted(any());
         verify(runListener, times(1))
-                .testRunStarted(any());
-        verify(runListener, times(1))
-                .testSuiteStarted(argThat(desc -> Objects.equals(desc.getClassName(), JUnit4SlingJUnit.class.getName())));
+                .testSuiteStarted(
+                        argThat(desc -> Objects.equals(desc.getClassName(), JUnit4SlingJUnit.class.getName())));
         verify(runListener, times(1))
                 .testStarted(argThat(desc -> Objects.equals(desc.getMethodName(), "testSuccessful")));
         verify(runListener, times(1))
                 .testFinished(argThat(desc -> Objects.equals(desc.getMethodName(), "testSuccessful")));
         verify(runListener, times(1))
-                .testSuiteFinished(argThat(desc -> Objects.equals(desc.getClassName(), JUnit4SlingJUnit.class.getName())));
-        verify(runListener, times(1))
-                .testRunFinished(argThat(Result::wasSuccessful));
+                .testSuiteFinished(
+                        argThat(desc -> Objects.equals(desc.getClassName(), JUnit4SlingJUnit.class.getName())));
+        verify(runListener, times(1)).testRunFinished(argThat(Result::wasSuccessful));
         verifyNoMoreInteractions(runListener);
-        
+
         strategy.close();
     }
 }

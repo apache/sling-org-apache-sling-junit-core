@@ -18,17 +18,17 @@
  */
 package org.apache.sling.junit.impl.servlet.junit5;
 
+import java.util.List;
+import java.util.Objects;
+import java.util.stream.Collectors;
+
 import org.junit.platform.launcher.listeners.TestExecutionSummary;
 import org.junit.runner.Result;
 import org.junit.runner.notification.Failure;
 import org.junit.runner.notification.RunListener;
 
-import java.util.List;
-import java.util.Objects;
-import java.util.stream.Collectors;
-
 public class ResultAdapter extends Result {
-    
+
     private final transient TestExecutionSummary summary;
 
     public ResultAdapter(TestExecutionSummary summary) {

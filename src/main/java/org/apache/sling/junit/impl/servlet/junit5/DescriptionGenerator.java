@@ -18,6 +18,10 @@
  */
 package org.apache.sling.junit.impl.servlet.junit5;
 
+import java.util.Arrays;
+import java.util.Optional;
+import java.util.function.Function;
+
 import org.jetbrains.annotations.NotNull;
 import org.junit.platform.engine.TestSource;
 import org.junit.platform.engine.support.descriptor.ClassSource;
@@ -25,17 +29,11 @@ import org.junit.platform.engine.support.descriptor.MethodSource;
 import org.junit.platform.launcher.TestIdentifier;
 import org.junit.runner.Description;
 
-import java.util.Arrays;
-import java.util.Optional;
-import java.util.function.Function;
-
 public enum DescriptionGenerator {
-
     CLASS_SOURCE(ClassSource.class, src -> Description.createSuiteDescription(src.getJavaClass())),
-    
-    METHOD_SOURCE(MethodSource.class, src -> Description.createTestDescription(src.getClassName(), src.getMethodName()))
 
-    ;
+    METHOD_SOURCE(
+            MethodSource.class, src -> Description.createTestDescription(src.getClassName(), src.getMethodName()));
 
     private final Class<? extends TestSource> clazz;
 

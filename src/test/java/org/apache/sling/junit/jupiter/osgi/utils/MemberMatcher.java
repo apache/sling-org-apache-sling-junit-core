@@ -18,12 +18,12 @@
  */
 package org.apache.sling.junit.jupiter.osgi.utils;
 
+import java.util.function.Function;
+
 import org.hamcrest.Description;
 import org.hamcrest.Factory;
 import org.hamcrest.Matcher;
 import org.hamcrest.TypeSafeDiagnosingMatcher;
-
-import java.util.function.Function;
 
 import static org.hamcrest.Condition.matched;
 
@@ -35,7 +35,7 @@ public class MemberMatcher<S, T> extends TypeSafeDiagnosingMatcher<S> {
 
     private final Matcher<T> valueMatcher;
 
-    private MemberMatcher(String memberName, Function<S,T> memberAccessor, Matcher<T> valueMatcher) {
+    private MemberMatcher(String memberName, Function<S, T> memberAccessor, Matcher<T> valueMatcher) {
         this.memberName = memberName;
         this.memberAccessor = memberAccessor;
         this.valueMatcher = valueMatcher;
@@ -44,16 +44,18 @@ public class MemberMatcher<S, T> extends TypeSafeDiagnosingMatcher<S> {
     @Override
     public boolean matchesSafely(S object, Description mismatch) {
         T value = memberAccessor.apply(object);
-        return matched(value, mismatch)
-                .matching(valueMatcher);
+        return matched(value, mismatch).matching(valueMatcher);
     }
 
     @Override
     public void describeTo(Description description) {
-        description.appendText("(").appendText(memberName).appendText(", ")
-                .appendDescriptionOf(valueMatcher).appendText(")");
+        description
+                .appendText("(")
+                .appendText(memberName)
+                .appendText(", ")
+                .appendDescriptionOf(valueMatcher)
+                .appendText(")");
     }
-
 
     /**
      * Creates a matcher that matches when the examined object has a JavaBean property
@@ -72,4 +74,3 @@ public class MemberMatcher<S, T> extends TypeSafeDiagnosingMatcher<S> {
         return new MemberMatcher<>(name, memberAccessor, valueMatcher);
     }
 }
-

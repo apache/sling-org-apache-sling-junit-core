@@ -18,6 +18,10 @@
  */
 package org.apache.sling.junit.impl.servlet;
 
+import java.io.PrintWriter;
+import java.io.StringWriter;
+import java.util.stream.Stream;
+
 import org.apache.sling.junit.impl.servlet.junit5.JUnitPlatformHelper;
 import org.apache.sling.junit.impl.servlet.junit5.RunListenerAdapter;
 import org.hamcrest.Matchers;
@@ -32,10 +36,6 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.platform.engine.TestEngine;
 import org.junit.vintage.engine.VintageTestEngine;
 
-import java.io.PrintWriter;
-import java.io.StringWriter;
-import java.util.stream.Stream;
-
 import static org.hamcrest.MatcherAssert.assertThat;
 
 public class HtmlRendererTest {
@@ -43,21 +43,20 @@ public class HtmlRendererTest {
     @SuppressWarnings("unused")
     private static Stream<Arguments> testEngines() {
         return Stream.of(
-                Arguments.of("junit4", new VintageTestEngine()),
-                Arguments.of("jupiter", new JupiterTestEngine())
-        );
+                Arguments.of("junit4", new VintageTestEngine()), Arguments.of("jupiter", new JupiterTestEngine()));
     }
 
     @ParameterizedTest(name = "{0}")
     @MethodSource("testEngines")
     public void testInvalidAssumption(String prefix, TestEngine testEngine) {
         String html = renderHtmlOutput(testEngine, ExampleTestCases.class, prefix + "FailedAssumption");
-        assertThat(html, Matchers.containsString(
-                String.format("<p class='ignored'><h3>TEST ABORTED: " +
-                                "%sFailedAssumption(org.apache.sling.junit.impl.servlet.HtmlRendererTest$ExampleTestCases)</h3>" +
-                                "<b>Assumption failed: %s</b></p>",
-                        prefix,
-                        ExampleTestCases.ASSUMPTION_IS_ALWAYS_INVALID)));
+        assertThat(
+                html,
+                Matchers.containsString(String.format(
+                        "<p class='ignored'><h3>TEST ABORTED: "
+                                + "%sFailedAssumption(org.apache.sling.junit.impl.servlet.HtmlRendererTest$ExampleTestCases)</h3>"
+                                + "<b>Assumption failed: %s</b></p>",
+                        prefix, ExampleTestCases.ASSUMPTION_IS_ALWAYS_INVALID)));
         assertThat(html, Matchers.containsString("<span class='testCountNonZero'>tests:1</span>"));
         assertThat(html, Matchers.containsString("<span class='abortedCountNonZero'>aborted:1</span>"));
     }
@@ -69,7 +68,10 @@ public class HtmlRendererTest {
         String html = renderHtmlOutput(testEngine, ExampleTestCases.class, prefix + failedAssertion);
         assertThat(html, Matchers.containsString("class='failure'"));
         assertThat(html, Matchers.containsString("class='failureDetails'"));
-        assertThat(html, Matchers.containsString(String.format("<h3>TEST FAILED: %s%s(%s)</h3>", prefix, failedAssertion, ExampleTestCases.class.getName())));
+        assertThat(
+                html,
+                Matchers.containsString(String.format(
+                        "<h3>TEST FAILED: %s%s(%s)</h3>", prefix, failedAssertion, ExampleTestCases.class.getName())));
         assertThat(html, Matchers.containsString(ExampleTestCases.ASSERTION_ALWAYS_FAILS));
         assertThat(html, Matchers.containsString("<span class='testCountNonZero'>tests:1</span>"));
         assertThat(html, Matchers.containsString("<span class='failureCountNonZero'>failures:1</span>"));

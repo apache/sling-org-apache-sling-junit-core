@@ -18,9 +18,6 @@
  */
 package org.apache.sling.junit.jupiter.osgi.impl;
 
-import org.apache.commons.lang3.reflect.TypeUtils;
-import org.jetbrains.annotations.NotNull;
-
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.lang.reflect.TypeVariable;
@@ -28,6 +25,9 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+
+import org.apache.commons.lang3.reflect.TypeUtils;
+import org.jetbrains.annotations.NotNull;
 
 /**
  * Utility class used for resolving type-arguments to concrete types.
@@ -49,7 +49,8 @@ public class ReflectionHelper {
 
             final Type rawType = parameterizedType.getRawType();
             if (!(rawType instanceof Class<?>)) {
-                throw new UnsupportedOperationException("Expected Class#getGenericSuperclass() to return an object of type Class<?>");
+                throw new UnsupportedOperationException(
+                        "Expected Class#getGenericSuperclass() to return an object of type Class<?>");
             }
             determineTypeArguments((Class<?>) rawType, typeVariableTypeMap);
         } else if (genericSuperclass instanceof Class<?>) {
@@ -63,16 +64,20 @@ public class ReflectionHelper {
                 }
             }
         } else {
-            throw new UnsupportedOperationException("Expected Class#getGenericSuperclass() to return null or an object of type Class<?> or ParameterizedType");
+            throw new UnsupportedOperationException(
+                    "Expected Class#getGenericSuperclass() to return null or an object of type Class<?> or ParameterizedType");
         }
     }
 
     @NotNull
-    public static ParameterizedType parameterizedTypeForBaseClass(@NotNull Class<?> baseClass, @NotNull Class<?> clazz) {
+    public static ParameterizedType parameterizedTypeForBaseClass(
+            @NotNull Class<?> baseClass, @NotNull Class<?> clazz) {
         ParameterizedType parameterizedType = findParameterizedTypeForBaseClass(baseClass, clazz);
-        return Objects.requireNonNull(parameterizedType, () -> String.format(
-                "Failed to discover type supported by %s; may be caused by lacking parameterized type in class declaration.",
-                clazz.getName()));
+        return Objects.requireNonNull(
+                parameterizedType,
+                () -> String.format(
+                        "Failed to discover type supported by %s; may be caused by lacking parameterized type in class declaration.",
+                        clazz.getName()));
     }
 
     private static ParameterizedType findParameterizedTypeForBaseClass(Class<?> baseClass, Class<?> clazz) {

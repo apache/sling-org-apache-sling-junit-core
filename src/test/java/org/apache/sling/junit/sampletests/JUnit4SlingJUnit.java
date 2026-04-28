@@ -36,7 +36,8 @@ public class JUnit4SlingJUnit {
         assertTrue(true);
     }
 
-    @Test @Ignore("skipped for testing")
+    @Test
+    @Ignore("skipped for testing")
     public void testSkipped() {
         assertTrue(true);
     }

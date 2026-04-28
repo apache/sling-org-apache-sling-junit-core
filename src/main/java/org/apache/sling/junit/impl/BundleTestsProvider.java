@@ -1,18 +1,20 @@
 /*
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements.  See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License.  You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.sling.junit.impl;
 
@@ -52,7 +54,7 @@ public class BundleTestsProvider extends AbstractTestsProvider {
     private static final Logger LOG = LoggerFactory.getLogger(BundleTestsProvider.class);
 
     public static final String SLING_TEST_REGEXP = "Sling-Test-Regexp";
-    
+
     private TestClassesTracker tracker;
 
     @Activate
@@ -104,8 +106,10 @@ public class BundleTestsProvider extends AbstractTestsProvider {
         private static Set<String> getTestClasses(Bundle bundle) {
             final String headerValue = getSlingTestRegexp(bundle);
             if (headerValue == null) {
-                LOG.debug("Bundle '{}' does not have {} header, not looking for test classes",
-                        bundle.getSymbolicName(), SLING_TEST_REGEXP);
+                LOG.debug(
+                        "Bundle '{}' does not have {} header, not looking for test classes",
+                        bundle.getSymbolicName(),
+                        SLING_TEST_REGEXP);
                 return Collections.emptySet();
             }
 
@@ -114,8 +118,12 @@ public class BundleTestsProvider extends AbstractTestsProvider {
                 final Pattern testClassRegexp = Pattern.compile(headerValue);
                 isTestClass = name -> testClassRegexp.matcher(name).matches();
             } catch (PatternSyntaxException pse) {
-                LOG.warn("Bundle '{}' has an invalid pattern for {} header, ignored: '{}', message: '{}'",
-                        bundle.getSymbolicName(), SLING_TEST_REGEXP, headerValue, pse.getMessage());
+                LOG.warn(
+                        "Bundle '{}' has an invalid pattern for {} header, ignored: '{}', message: '{}'",
+                        bundle.getSymbolicName(),
+                        SLING_TEST_REGEXP,
+                        headerValue,
+                        pse.getMessage());
                 return Collections.emptySet();
             }
 
@@ -124,11 +132,15 @@ public class BundleTestsProvider extends AbstractTestsProvider {
             while (classUrls.hasMoreElements()) {
                 URL url = classUrls.nextElement();
                 final String name = toClassName(url);
-                if(isTestClass.test(name)) {
+                if (isTestClass.test(name)) {
                     result.add(name);
                 } else {
-                    LOG.debug("Class '{}' does not match {} pattern '{}' of bundle '{}', ignored",
-                            name, SLING_TEST_REGEXP, headerValue, bundle.getSymbolicName());
+                    LOG.debug(
+                            "Class '{}' does not match {} pattern '{}' of bundle '{}', ignored",
+                            name,
+                            SLING_TEST_REGEXP,
+                            headerValue,
+                            bundle.getSymbolicName());
                 }
             }
 
